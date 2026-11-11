@@ -1,0 +1,4 @@
+# سديم — المحطات المسموح لها بجذر (busybox login)
+console
+tty1
+ttyS0

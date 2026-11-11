@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["sadim/**", ".github/workflows/live-iso.yml"]
+    paths: ["sadim/kernel/**", "sadim/initramfs/**", "sadim/iso/**", "sadim/ci/**", ".github/workflows/live-iso.yml"]
 
 permissions:
   contents: read

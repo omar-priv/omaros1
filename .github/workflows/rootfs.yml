@@ -1,0 +1,86 @@
+# Sadim OS — المرحلة 3: بناء الجذر الحي (Buildroot 2025.02.19) + إقلاع كامل في QEMU
+# المسار: kernel + initramfs v0.3 → squashfs (virtio) → overlayfs → switch_root → خدمات + DHCP
+# مبدأ صارم: يفشل الـ Workflow إن لم تظهر العلامات الأربع ×3 تشغيلات متتالية.
+name: sadim-phase3-rootfs
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "sadim/rootfs/**"
+      - "sadim/kernel/**"
+      - "sadim/initramfs/**"
+      - "sadim/ci/boot-test-rootfs.sh"
+      - ".github/workflows/rootfs.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  rootfs-boot-gate:
+    name: Buildroot rootfs + full live boot (squashfs+overlay) + services + DHCP
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read kernel version
+        id: kv
+        run: |
+          V="$(sed -n 's/^KERNEL_VERSION=//p' sadim/kernel/version.mk | tr -d '[:space:]')"
+          test -n "$V" || { echo "::error::KERNEL_VERSION missing"; exit 1; }
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Kernel version: $V"
+
+      - name: Cache kernel tarball
+        uses: actions/cache@v4
+        with:
+          path: sadim/output/dl
+          key: linux-${{ steps.kv.outputs.version }}-tarball
+
+      - name: Cache Buildroot downloads
+        uses: actions/cache@v4
+        with:
+          path: sadim/output/dl-rootfs
+          key: buildroot-2025.02.19-dl
+
+      - name: Cache Buildroot ccache
+        uses: actions/cache@v4
+        with:
+          path: sadim/output/ccache
+          key: buildroot-ccache-2025.02.19
+
+      - name: Install build toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bc bison flex libelf-dev libssl-dev libncurses-dev \
+            cpio rsync perl wget gzip xz-utils file \
+            g++ patch unzip python3 \
+            qemu-system-x86
+
+      - name: Build kernel (tinyconfig + sadim fragment v0.3)
+        run: bash sadim/kernel/build.sh
+
+      - name: Build initramfs (BusyBox + sadim init v0.3)
+        run: bash sadim/initramfs/build.sh
+
+      - name: Build rootfs (Buildroot 2025.02.19 → rootfs.squashfs)
+        run: bash sadim/rootfs/build.sh
+
+      - name: "Live boot test (gate: SADIM-BOOT-OK + SADIM-LIVE-OK + SADIM-ROOTFS-OK + SADIM-NET-OK x3)"
+        run: bash sadim/ci/boot-test-rootfs.sh
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sadim-rootfs-${{ github.run_id }}
+          path: |
+            sadim/output/bzImage
+            sadim/output/initramfs.cpio.gz
+            sadim/output/rootfs.squashfs
+            sadim/output/rootfs-boot-log.txt
+          if-no-files-found: warn

@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["sadim/**", ".github/workflows/kernel-boot.yml"]
+    paths: ["sadim/kernel/**", "sadim/initramfs/**", "sadim/ci/boot-test.sh", ".github/workflows/kernel-boot.yml"]
 
 permissions:
   contents: read
