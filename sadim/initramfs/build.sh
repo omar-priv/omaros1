@@ -9,10 +9,13 @@ mkdir -p "$OUT"
 cd "$OUT"
 
 BVB="busybox-1.36.1"
+# بصمة التربل الرسمي (من busybox.net عبر HTTPS، محسوبة وتثبيت) — أي اختلاف يجهض البناء
+BB_SHA256="b8cc24c9574d809e7279c3be349795c5d5ceb6fdf19ca709f80cde50e47de314"
 if [ ! -x "$BVB/busybox" ]; then
   if [ ! -d "$BVB" ]; then
     echo "[sadim] downloading $BVB"
     wget -q --show-progress "https://busybox.net/downloads/$BVB.tar.bz2"
+    echo "$BB_SHA256  $BVB.tar.bz2" | sha256sum -c -
     tar xf "$BVB.tar.bz2"
   fi
   cd "$BVB"
