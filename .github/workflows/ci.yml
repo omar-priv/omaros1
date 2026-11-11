@@ -1,0 +1,41 @@
+# سديم CI — المرحلة الحالية: سلامة البنية فقط
+# ملاحظة صادقة: job الإقلاع في QEMU سيُضاف في Phase 3 مع سكربتات البناء الفعلية،
+# ولن يُفعّل قبل أن يكون قابلاً للتشغيل الحقيقي (لا اختبارات معطّلة ولا أخضر وهمي).
+name: sadeem-ci
+
+on:
+  push:
+    branches: [main]
+    paths: ["docs/**", "README.md", ".github/workflows/**", "sadeem/**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  repo-lint:
+    name: سلامة بنية المشروع والوثائق
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: وثائق القرار موجودة
+        run: |
+          test -f docs/adr/ADR-001-architecture.md
+          test -f docs/research/hardware-discovery.md
+          test -f docs/research/architecture-options.md
+          test -f docs/roadmap.md
+          test -f docs/known-issues.md
+          test -f docs/testing-strategy.md
+
+      - name: لا أسرار أو مفاتيح في المستودع
+        run: |
+          if grep -riEn "(api[_-]?key|secret|password|token)[[:space:]]*[:=][[:space:]]*['\"][A-Za-z0-9]{16,}" \
+             --include='*.md' --include='*.yml' --include='*.sh' --include='*.py' . ; then
+            echo "::error::Found potential secrets in tracked files"; exit 1
+          else
+            echo "No secrets patterns found."
+          fi
+
+      - name: قواعد الأمان الحرفية في README
+        run: grep -q "Windows" README.md && grep -q "QEMU" README.md

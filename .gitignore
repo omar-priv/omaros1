@@ -1,0 +1,22 @@
+# الذاكرة الشخصية — ليست جزءاً من المستودع العام
+.memory/
+memory/
+
+# مخلفات الفحص المؤقتة
+artifacts/
+
+# مخارج البناء وصور النظام الكبيرة
+sadeem/build/buildroot*/
+sadeem/build/output/
+sadeem/build/dl/
+sadeem/build/ccache/
+*.iso
+*.img
+*.vhd
+*.qcow2
+*.bzImage
+*.uImage
+
+# ملفات Windows المؤقتة
+Thumbs.db
+Desktop.ini
