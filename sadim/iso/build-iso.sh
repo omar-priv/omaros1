@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Sadim OS — بناء Live ISO قابل للإقلاع BIOS (CD + USB هجين) (v0.1)
-# مسار الإقلاع: isolinux → kernel + initramfs (النظام يعمل كلياً من RAM)
+# Sadim OS — بناء Live ISO v0.3 قابل للإقلاع BIOS (CD + USB هجين)
+# مسار الإقلاع: isolinux → kernel + initramfs v0.3 → live/rootfs.squashfs (iso9660+loop)
+#         → overlayfs → switch_root → جذر Buildroot حي + خدمات + DHCP حقيقي
 # لا يلمس أي قرص داخلي — مجرد بناء صورة.
 set -euo pipefail
 

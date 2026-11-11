@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sadim OS — اختبار إقلاع ISO v0.2 عبر QEMU بمسار BIOS الحقيقي
+# Sadim OS — اختبار إقلاع ISO v0.3 عبر QEMU بمسار BIOS الحقيقي
 # (SeaBIOS → isolinux → kernel → init v0.3 → iso9660+loop → overlayfs → خدمات → DHCP)
 # 3 إقلاعات متتالية مطلوبة (ضد العشوائية). في وضع ISO النظام يبقى حياً (لا reboot) —
 # نجاح كل تشغيل = العلامات الأربع داخل المهلة دون Kernel panic.

@@ -64,7 +64,7 @@ jobs:
       - name: Build rootfs (Buildroot 2025.02.19 → rootfs.squashfs)
         run: bash sadim/rootfs/build.sh
 
-      - name: Build live ISO v0.2 (BIOS hybrid CD/USB + live rootfs)
+      - name: Build live ISO v0.3 (BIOS hybrid CD/USB + live rootfs)
         run: bash sadim/iso/build-iso.sh
 
       - name: "ISO boot test in QEMU (real path: SeaBIOS→isolinux→init→overlay→services, gate: 4 markers ×3)"
