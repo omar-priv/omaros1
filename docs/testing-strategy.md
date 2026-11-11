@@ -10,7 +10,7 @@
 | Docs/Repo Lint | سلامة هيكل المشروع والوثائق | CI (ubuntu) | ✅ تعمل الآن (ci.yml) |
 | Unit | وحدات userland/أدواتنا | CI | 🔜 Phase 3+ |
 | Integration | initramfs/init يقرأ كونفيغ ويقيم الخدمات | CI + QEMU | 🔜 Phase 3-4 |
-| **Boot Test** | النواة تقلع، init يعمل، طابور إدخال حي | CI + QEMU `-nographic` | 🔜 Phase 3 (بوابة: ظهور `SADEEM-BOOT-OK`) |
+| **Boot Test** | النواة تقلع، init يعمل، طابور إدخال حي | CI + QEMU `-nographic` | 🔜 Phase 2 (بوابة: ظهور `SADIM-BOOT-OK`) |
 | System | الواجهة تعمل فعلياً (إطار يُرسم، إدخال يستجيب) | QEMU بصورة كاملة | 🔜 Phase 4-5 |
 | Performance | قياسات RAM/إقلاع/IO قبل وبعد كل تغيير مؤثر | QEMU ثم عتاد حي | 🔜 Phase 6 |
 | Hardware | QCA9377/صوت/لمس/طاقة/USB على العتاد الحقيقي | USB Live (بموافقة صريحة) | 🔜 Phase 7 |

@@ -7,10 +7,8 @@ artifacts/
 hardware-discovery-report-*.txt
 
 # مخارج البناء وصور النظام الكبيرة
-sadeem/build/buildroot*/
-sadeem/build/output/
-sadeem/build/dl/
-sadeem/build/ccache/
+sadim/output/
+sadim/build/
 *.iso
 *.img
 *.vhd
