@@ -20,9 +20,9 @@ if [ ! -x "$BVB/busybox" ]; then
   make defconfig >/dev/null
   sed -i 's/^# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config
   # applet tc لا يترجم ضد ترويسات نواة حديثة (تُزيل بنى CBQ) وهو غير مطلوب في سديم — تعطيل صريح
+  # ملاحظة: تعديل رموز موجودة في .config مباشرة كافٍ — لا حاجة لإعادة توليد
+  # (busybox kconfig لا يملك olddefconfig، وyes|oldconfig يفشل مع pipefail على broken pipe)
   sed -i 's/^CONFIG_TC=y/# CONFIG_TC is not set/' .config
-  # busybox kconfig لا يملك target: olddefconfig (خاص بالنواة) — oldconfig مع إجابات افتراضية
-  yes "" | make oldconfig >/dev/null
   make -j"$(nproc)" >/dev/null
   cd ..
 fi
