@@ -10,12 +10,15 @@ ISODIR="$OUT/iso-staging"
 
 [ -f "$OUT/bzImage" ] || { echo "FAIL: bzImage missing"; exit 1; }
 [ -f "$OUT/initramfs.cpio.gz" ] || { echo "FAIL: initramfs missing"; exit 1; }
+# ISO v0.2: الجذر الحي (Buildroot) جزء إلزامي من الصورة — بلا rootfs لا بناء
+[ -f "$OUT/rootfs.squashfs" ] || { echo "FAIL: rootfs.squashfs missing (run sadim/rootfs/build.sh first)"; exit 1; }
 
 rm -rf "$ISODIR"
-mkdir -p "$ISODIR/boot" "$ISODIR/isolinux"
+mkdir -p "$ISODIR/boot" "$ISODIR/isolinux" "$ISODIR/live"
 
 cp "$OUT/bzImage" "$ISODIR/boot/vmlinuz-sadim"
 cp "$OUT/initramfs.cpio.gz" "$ISODIR/boot/initramfs-sadim.img"
+cp "$OUT/rootfs.squashfs" "$ISODIR/live/rootfs.squashfs"
 
 cat > "$ISODIR/isolinux/isolinux.cfg" <<'EOF'
 DEFAULT sadim

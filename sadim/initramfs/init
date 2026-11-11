@@ -31,7 +31,7 @@ echo ""
 RO="/mnt/ro"
 LIVE_ROOT=""
 mkdir -p "$RO"
-for cand in /dev/vda /dev/sr0 /dev/sda; do
+for cand in /dev/vda /dev/sr0 /dev/sda /dev/sdb /dev/sda1 /dev/sdb1; do
   [ -b "$cand" ] || continue
   # مسار CI/قرص: squashfs خام على الجهاز كله
   if mount -o ro -t squashfs "$cand" "$RO" 2>/dev/null; then

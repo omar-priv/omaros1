@@ -6,16 +6,16 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["sadim/kernel/**", "sadim/initramfs/**", "sadim/iso/**", "sadim/ci/**", ".github/workflows/live-iso.yml"]
+    paths: ["sadim/kernel/**", "sadim/initramfs/**", "sadim/rootfs/**", "sadim/iso/**", "sadim/ci/**", ".github/workflows/live-iso.yml"]
 
 permissions:
   contents: read
 
 jobs:
   build-and-boot-iso:
-    name: Kernel + Initramfs + Live ISO + real boot-path test
+    name: Kernel + Initramfs + Rootfs + Live ISO + real boot-path test
     runs-on: ubuntu-24.04
-    timeout-minutes: 50
+    timeout-minutes: 80
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,24 +34,40 @@ jobs:
           path: sadim/output/dl
           key: linux-${{ steps.kv.outputs.version }}-tarball
 
+      - name: Cache Buildroot downloads
+        uses: actions/cache@v4
+        with:
+          path: sadim/output/dl-rootfs
+          key: buildroot-2025.02.19-dl
+
+      - name: Cache Buildroot ccache
+        uses: actions/cache@v4
+        with:
+          path: sadim/output/ccache
+          key: buildroot-ccache-2025.02.19
+
       - name: Install build toolchain + ISO tooling
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             bc bison flex libelf-dev libssl-dev libncurses-dev \
             cpio rsync perl wget gzip xz-utils file \
+            g++ patch unzip python3 \
             qemu-system-x86 xorriso isolinux syslinux-common
 
-      - name: Build kernel (tinyconfig + sadim fragment)
+      - name: Build kernel (tinyconfig + sadim fragment v0.3)
         run: bash sadim/kernel/build.sh
 
-      - name: Build initramfs (BusyBox + sadim rootfs + init v0.2)
+      - name: Build initramfs (BusyBox + sadim rootfs + init v0.3)
         run: bash sadim/initramfs/build.sh
 
-      - name: Build live ISO (BIOS hybrid CD/USB)
+      - name: Build rootfs (Buildroot 2025.02.19 → rootfs.squashfs)
+        run: bash sadim/rootfs/build.sh
+
+      - name: Build live ISO v0.2 (BIOS hybrid CD/USB + live rootfs)
         run: bash sadim/iso/build-iso.sh
 
-      - name: "ISO boot test in QEMU (real path: SeaBIOS→isolinux→init, gate: SADIM-BOOT-OK ×3)"
+      - name: "ISO boot test in QEMU (real path: SeaBIOS→isolinux→init→overlay→services, gate: 4 markers ×3)"
         run: bash sadim/ci/boot-test-iso.sh
 
       - name: Upload artifacts
@@ -63,5 +79,6 @@ jobs:
             sadim/output/sadim.iso
             sadim/output/bzImage
             sadim/output/initramfs.cpio.gz
+            sadim/output/rootfs.squashfs
             sadim/output/iso-boot-log.txt
           if-no-files-found: warn
