@@ -1,0 +1,85 @@
+# Sadim OS — المرحلة 4: واجهة رسومية (Wayland/weston) + اختبار في QEMU مع virtio-gpu
+# مبدأ صارم: يفشل الـ Workflow إن لم تظهر العلامات الخمس ×3 تشغيلات متتالية.
+name: sadim-phase4-gui
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "sadim/kernel/**"
+      - "sadim/initramfs/**"
+      - "sadim/rootfs/**"
+      - "sadim/ci/boot-test-gui.sh"
+      - ".github/workflows/gui.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  gui-boot-gate:
+    name: Buildroot + weston + seatd + virtio-gpu + QMP screendump
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read kernel version
+        id: kv
+        run: |
+          V="$(sed -n 's/^KERNEL_VERSION=//p' sadim/kernel/version.mk | tr -d '[:space:]')"
+          test -n "$V" || { echo "::error::KERNEL_VERSION missing"; exit 1; }
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Kernel version: $V"
+
+      - name: Cache kernel tarball
+        uses: actions/cache@v4
+        with:
+          path: sadim/output/dl
+          key: linux-${{ steps.kv.outputs.version }}-tarball
+
+      - name: Cache Buildroot downloads
+        uses: actions/cache@v4
+        with:
+          path: sadim/output/dl-rootfs
+          key: buildroot-2025.02.19-dl
+
+      - name: Cache Buildroot ccache
+        uses: actions/cache@v4
+        with:
+          path: sadim/output/ccache
+          key: buildroot-ccache-2025.02.19
+
+      - name: Install build toolchain + GUI deps + QMP tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bc bison flex libelf-dev libssl-dev libncurses-dev \
+            cpio rsync perl wget gzip xz-utils file \
+            g++ patch unzip python3 \
+            qemu-system-x86 socat
+
+      - name: Build kernel (tinyconfig + sadim fragment v0.4)
+        run: bash sadim/kernel/build.sh
+
+      - name: Build initramfs (BusyBox + sadim init v0.3 + GUI services)
+        run: bash sadim/initramfs/build.sh
+
+      - name: Build rootfs (Buildroot 2025.02.19 → weston + seatd + eudev → rootfs.squashfs)
+        run: bash sadim/rootfs/build.sh
+
+      - name: "GUI boot test (gate: SADIM-BOOT-OK + SADIM-LIVE-OK + SADIM-ROOTFS-OK + SADIM-NET-OK + SADIM-GUI-OK x3)"
+        run: bash sadim/ci/boot-test-gui.sh
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sadim-gui-${{ github.run_id }}
+          path: |
+            sadim/output/bzImage
+            sadim/output/initramfs.cpio.gz
+            sadim/output/rootfs.squashfs
+            sadim/output/gui-boot-log.txt
+          if-no-files-found: warn

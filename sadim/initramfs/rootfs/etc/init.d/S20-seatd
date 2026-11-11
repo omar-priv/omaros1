@@ -1,0 +1,31 @@
+#!/bin/sh
+# Sadim OS — خدمة seatd: إدارة جلسات Wayland وأجهزة الإدخال
+# تبدأ قبل weston لتوفير socket seatd لـ compositor
+# العلامة: لا علامة صريحة — weston يتحقق من seatd عند البدء
+
+DAEMON=/usr/bin/seatd
+NAME=seatd
+PIDFILE=/var/run/seatd.pid
+
+[ -x "$DAEMON" ] || { echo "[seatd] binary not found: $DAEMON"; exit 0; }
+
+case "$1" in
+  start)
+    echo "[seatd] starting seatd daemon…"
+    # seatd يحتاج مجموعة seat — ننشئها إن لم تكن موجودة
+    getent group seat >/dev/null || addgroup -S seat 2>/dev/null
+    # نضيف المستخدم sadim لمجموعة seat
+    getent passwd sadim >/dev/null && adduser sadim seat 2>/dev/null
+    # نبدأ seatd في الخلفية
+    start-stop-daemon -S -b -m -p "$PIDFILE" -x "$DAEMON" -- -g seat
+    ;;
+  stop)
+    echo "[seatd] stopping seatd…"
+    start-stop-daemon -K -p "$PIDFILE"
+    rm -f "$PIDFILE"
+    ;;
+  *)
+    echo "Usage: $0 {start|stop}"
+    exit 1
+    ;;
+esac
