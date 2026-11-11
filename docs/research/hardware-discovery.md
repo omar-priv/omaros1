@@ -63,3 +63,31 @@
 VideoController/SoundDevice/NetworkAdapter/Battery/BatteryStaticData/BatteryFullChargedCapacity)،
 سجل VRAM، `powercfg /batteryreport /output artifacts\battery-report.html`،
 `Get-Command` لجرد الأدوات، `wsl --status`.
+
+## 7. أداة الاكتشاف الآلية (Hardware Discovery Tool) — موجودة الآن وقابلة للتكرار
+
+- المسار: `hardware-discovery/discover.ps1` (18 قسماً قراءة فقط، مخرجات في `artifacts/`، لا بيانات شخصية —
+  فحص آلي للتقرير المولّد: صفر أنماط MAC وصفر حقول Serial/ProductId).
+- **سجل صدق:** وُجدت نسخة أولى من الجلسة المتوازية أنتجت تقارير فارغة (3 ملفات × 5 بايت) بسبب عيب
+  نطاق المتغير `$ReportLines` داخل الدوال في PowerShell 5.1 — أُصلح بتاريخ 2026-11-11، وأُعيد التوليد
+  فعلياً (تقرير 14KB حقيقي). مثال عملي على قاعدة «الملف الموجود ليس دليلاً على عمل الوظيفة».
+- أحدث تقرير فعلي: `artifacts/hardware-discovery-report-20261111-195557.txt`.
+
+## 8. معرفات PCI المكتشفة فعلياً (أساس خريطة التعريفات — المرحلة 4)
+
+| الجهاز | VEN:DEV | السائق المتوقع في سديم | ملاحظات |
+|---|---|---|---|
+| QCA9377 Wi-Fi | **168C:0042** (SUBSYS 08A611AD, REV_31) | ath10k_pci + firmware-5.bin | يطابق ما دُرس في architecture-options |
+| Intel HD Graphics 620 | **8086:5916** | i915 (KBL GT2) | VRAM مشتركة |
+| Realtek GbE | **10EC:8168** | r8169 | منفذ الإيثرنت |
+| SATA AHCI | **8086:9D03** | ahci | القرص SMR خلفه |
+| Host Bridge | 8086:5904 | (kernel core) | Kaby Lake-U |
+| SMBus | 8086:9D23 | i2c-i801 | مرشح لوحة اللمس (Elantech/SMBus) — يُتحقق |
+| Management Engine | 8086:9D3A | mei_me | يُعطَّل افتراضياً (تقليل الخدمات) |
+| Thermal / PMC / LPC / PCIe Root Ports | 9D31/9D21/9D4E/9D1x | kernel core | عادي |
+
+## 9. تأكيدات إضافية من التقرير الفعلي
+
+- التردد الحالي للمعالج: 2701MHz [م] (Boost يعمل).
+- شريحة الذاكرة الوحيدة في **ChannelB-DIMM0** [م] — تأكيد هيكلي لـ Single Channel.
+- إعادة تأكيد Legacy + MBR من أداة الاكتشاف المستقلة (طريقتان مختلفتان، نفس النتيجة).

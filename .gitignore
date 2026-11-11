@@ -4,6 +4,7 @@ memory/
 
 # مخلفات الفحص المؤقتة
 artifacts/
+hardware-discovery-report-*.txt
 
 # مخارج البناء وصور النظام الكبيرة
 sadeem/build/buildroot*/

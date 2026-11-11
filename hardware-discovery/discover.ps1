@@ -4,26 +4,36 @@
 # =============================================================================
 # ملاحظة: هذا السكريبت يعمل على Windows لجمع معلومات العتاد قبل بناء نظام التشغيل.
 # لا يعدّل أي شيء على النظام، لا يكتب إلى أقسام القرص، لا يحتاج Admin إلا عند
-# استعلام بعض العتاد المحمي (مثل بطارية، TPM، تفاصيل PCI العميقة).
-# جميع المخرجات تُحفظ في ملف نصي في المجلد الحالي، ولا تحتوي على بيانات شخصية
+# استعلام بعض العتاد المحمي (مثل TPM وBitLocker).
+# جميع المخرجات تُحفظ في مجلد artifacts/ ولا تحتوي على بيانات شخصية
 # (رقم تسلسلي، MAC Address، Product ID).
+#
+# سجل الإصلاحات:
+# - 2026-11-11: إصلاح عيب جوهري — التعديل على $ReportLines داخل الدوال كان يحدث
+#   على نسخة محلية فقط، فكانت التقارير تُخرج فارغة (تكرار 3 مرات). الآن تُستخدم
+#   قائمة على مستوى السكربت $script:ReportLines. وكذلك: التذييل يُكتب قبل الحفظ
+#   (كان يُضاف بعد Save-Content فيضيع)، والمخرج في artifacts/ (متجاهَل من Git)،
+#   وأُضيفت سعات البطارية من root\wmi (أدق من Win32_Battery في هذا الجهاز).
 # =============================================================================
 
-$OutputFile = "hardware-discovery-report-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
-$ReportLines = @()
+$script:ReportLines = [System.Collections.Generic.List[string]]::new()
+
+$ArtifactsDir = Join-Path (Get-Location) 'artifacts'
+if (-not (Test-Path $ArtifactsDir)) { New-Item -ItemType Directory -Force -Path $ArtifactsDir | Out-Null }
+$OutputFile = Join-Path $ArtifactsDir ("hardware-discovery-report-{0}.txt" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
 
 function Write-Report {
     param([string]$Message)
-    $ReportLines += $Message
+    $script:ReportLines.Add($Message)
 }
 
 function Write-Section {
     param([string]$Title)
-    $ReportLines += ""
-    $ReportLines += ("=" * 80)
-    $ReportLines += $Title
-    $ReportLines += ("=" * 80)
-    $ReportLines += ""
+    $script:ReportLines.Add("")
+    $script:ReportLines.Add("=" * 80)
+    $script:ReportLines.Add($Title)
+    $script:ReportLines.Add("=" * 80)
+    $script:ReportLines.Add("")
 }
 
 # --- Section 1: Boot Mode (UEFI vs Legacy BIOS) ---
@@ -231,7 +241,21 @@ try {
         Write-Report ""
     }
 } catch {
-    Write-Report "فشل في قراءة معلومات البطارية (قد تحتاج صلاحيات Administrator)"
+    Write-Report "فشل في قراءة معلومات البطارية الأساسية"
+}
+
+# قياس أدق من root\wmi (أثبت عمله في هذا الجهاز بتاريخ 2026-11-11)
+try {
+    $bs = Get-CimInstance -Namespace root\wmi -ClassName BatteryStaticData -ErrorAction Stop
+    $fc = Get-CimInstance -Namespace root\wmi -ClassName BatteryFullChargedCapacity -ErrorAction Stop
+    Write-Report "السعة التصميمية (root\wmi BatteryStaticData): $($bs.DesignedCapacity) mWh"
+    Write-Report "السعة الكاملة الفعلية (root\wmi BatteryFullChargedCapacity): $($fc.FullChargedCapacity) mWh"
+    if ($bs.DesignedCapacity -and $fc.FullChargedCapacity) {
+        $health = [math]::Round(100 * $fc.FullChargedCapacity / $bs.DesignedCapacity, 1)
+        Write-Report "صحة البطارية التقديرية: $health%"
+    }
+} catch {
+    Write-Report "لا يمكن قراءة سعات البطارية من root\wmi: $($_.Exception.Message)"
 }
 
 # --- Section 13: USB & Bluetooth ---
@@ -293,7 +317,7 @@ try {
 Write-Section "16. أجهزة PCI (للتحقق من التوافق مع التعريفات)"
 
 try {
-    $pci = Get-WmiObject Win32_PnPEntity | Where-Object { $_.Name -like "*PCI*" } | Select-Object Name, Manufacturer, DeviceID, Status, DriverVersion
+    $pci = Get-WmiObject Win32_PnPEntity | Where-Object { $_.DeviceID -like "PCI*" } | Select-Object Name, Manufacturer, DeviceID, Status, DriverVersion
     foreach ($p in $pci) {
         Write-Report "الجهاز: $($p.Name) — معرف الجهاز: $($p.DeviceID) — الحالة: $($p.Status) — تعريف: $($p.DriverVersion)"
     }
@@ -326,15 +350,18 @@ try {
     Write-Report "فشل في قراءة إمكانيات إدارة الطاقة"
 }
 
-# --- Save Report ---
-$ReportContent = $ReportLines -join "`n"
-Set-Content -Path $OutputFile -Value $ReportContent -Encoding UTF8
+# --- Footer (يُكتب قبل الحفظ) ---
 Write-Report ""
 Write-Section "نهاية التقرير"
 Write-Report "تم حفظ التقرير في: $OutputFile"
 Write-Report "تاريخ الإنشاء: $(Get-Date)"
 
-Write-Host "`n========================================" -ForegroundColor Cyan
+# --- Save Report ---
+$ReportContent = $script:ReportLines -join "`r`n"
+Set-Content -Path $OutputFile -Value $ReportContent -Encoding UTF8
+
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  تم الانتهاء من اكتشاف العتاد!" -ForegroundColor Green
 Write-Host "  التقرير محفوظ في: $OutputFile" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
