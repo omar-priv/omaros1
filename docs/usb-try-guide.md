@@ -6,7 +6,8 @@
 
 ## ما تحتاجه
 
-1. ملف `sadim-0.1-live-bios.iso` من صفحة الـ Release (الرابط سيُضاف هنا بعد إنشاء الإصدار).
+1. ملف `sadim-0.1-live-bios.iso` من **الإصدار الرسمي**:
+   **https://github.com/omar-priv/omaros1/releases/download/v0.1.0-live/sadim-0.1-live-bios.iso**
 2. فلاشة USB (سعة 1GB فأكثر — سيُمحى محتواها بالكامل! اختر فلاشة لا تحمل بيانات مهمة).
 3. جهاز بوضع Legacy BIOS (جهازك Acer E5-576G يقلع Legacy + MBR فعلاً — قياس موثق).
 
