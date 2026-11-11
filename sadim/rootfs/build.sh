@@ -24,7 +24,8 @@ sed "s|@OVERLAY@|$OVERLAY|g" "$ROOT/rootfs/sadim-rootfs.config" > "$OUT/brconf/s
 
 if [ ! -d "$BRV" ]; then
   echo "[sadim] downloading $BRV (official mirror tag)"
-  wget -q "$BR_URL"
+  # -O فرض الاسم المتوقع: عنوان المرآة ينتهي بـ 2025.02.19.tar.gz فقط
+  wget -q -O "$BRV.tar.gz" "$BR_URL"
   echo "$BR_SHA256  $BRV.tar.gz" | sha256sum -c -
   tar xf "$BRV.tar.gz"
 fi
