@@ -1,0 +1,7 @@
+NAME="Sadim OS"
+ID=sadim
+VERSION_ID="0.1"
+VERSION="0.1-live"
+PRETTY_NAME="Sadim OS (سديم) 0.1-live"
+HOME_URL="https://github.com/omar-priv/omaros1"
+BUILD_ID=live-ram

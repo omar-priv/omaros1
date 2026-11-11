@@ -23,7 +23,7 @@ for i in $(seq 1 $RUNS); do
     -m 256M -nographic -no-reboot \
     -kernel "$OUT/bzImage" \
     -initrd "$OUT/initramfs.cpio.gz" \
-    -append "console=ttyS0 rdinit=/init panic=-1 loglevel=7" \
+    -append "console=ttyS0 rdinit=/init panic=-1 loglevel=7 SADIM_CI=1" \
     2>&1 | tee -a "$rlog"
   status=${PIPESTATUS[0]}
   echo "[sadim] run $i: qemu exit code $status"

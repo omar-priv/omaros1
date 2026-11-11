@@ -1,27 +1,35 @@
 #!/bin/sh
-# Sadim OS — init v0.1 (المرحلة 2)
-# الهدف المعلن: إثبات وصول النظام إلى init دون Kernel Panic، عبر وسم SADIM-BOOT-OK.
-# هذا أول init للمشروع — سيتبدل تدريجياً في المرحلة 3 (rootfs وخدمات).
+# Sadim OS — init v0.2 (جذر Live في RAM + وضع بوابة CI)
+# - يطبع وسم SADIM-BOOT-OK عند وصول النظام إلى init (بوابة المرحلة 2/ISO)
+# - وضع CI (SADIM_CI=1 في cmdline): وسم ثم إقلاع نظيف يُنهي QEMU
+# - وضع Live العادي: يسلّم لـ busybox init عبر /etc/inittab (gettys)
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin
 
 mount -t proc proc /proc 2>/dev/null    || echo "[init] WARN: proc mount failed"
 mount -t sysfs sysfs /sys 2>/dev/null   || echo "[init] WARN: sysfs mount failed"
 mount -t devtmpfs devtmpfs /dev 2>/dev/null || echo "[init] WARN: devtmpfs mount failed"
 
+hostname sadim 2>/dev/null
+
 echo ""
 echo "=================================================="
-echo "   Sadim OS (سديم) — boot v0.1"
+echo "   Sadim OS (سديم) — live boot v0.2"
 echo "=================================================="
 echo "kernel : $(uname -r)"
 echo "uptime : $(cut -d ' ' -f1 /proc/uptime) s"
 if [ -r /proc/meminfo ]; then
   echo "mem    : $(grep '^MemTotal:' /proc/meminfo)"
 fi
-echo "cpus   : $(nproc 2>/dev/null || echo 1)"
 echo ""
+
 echo "SADIM-BOOT-OK"
 echo ""
 
-# في CI: إعادة تشغيل نظيفة تُنهي QEMU (-no-reboot) بعد تسجيل الوسم
-sleep 1
-reboot -f
+# وضع بوابة CI: إقلاع مباشر بـ SADIM_CI=1 → وسم ثم إعادة تشغيل نظيفة
+if grep -q "SADIM_CI=1" /proc/cmdline 2>/dev/null; then
+  sleep 1
+  reboot -f
+fi
+
+# وضع Live العادي: تسليم لـ busybox init (getty على tty1 و ttyS0)
+exec /sbin/init
