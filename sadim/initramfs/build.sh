@@ -19,6 +19,9 @@ if [ ! -x "$BVB/busybox" ]; then
   echo "[sadim] busybox defconfig + STATIC"
   make defconfig >/dev/null
   sed -i 's/^# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config
+  # applet tc لا يترجم ضد ترويسات نواة حديثة (تُزيل بنى CBQ) وهو غير مطلوب في سديم — تعطيل صريح
+  sed -i 's/^CONFIG_TC=y/# CONFIG_TC is not set/' .config
+  make olddefconfig >/dev/null
   make -j"$(nproc)" >/dev/null
   cd ..
 fi
