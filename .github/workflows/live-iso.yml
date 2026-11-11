@@ -1,0 +1,67 @@
+# Sadim OS — المرحلة ISO: بناء Live ISO (BIOS هجين) + اختبار إقلاع عبر المسار الحقيقي في QEMU
+# مبدأ صارم: يفشل الـ Workflow إذا لم يصل الإقلاع عبر isolinux إلى SADIM-BOOT-OK ×3.
+name: sadim-live-iso
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["sadim/**", ".github/workflows/live-iso.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-boot-iso:
+    name: Kernel + Initramfs + Live ISO + real boot-path test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read kernel version
+        id: kv
+        run: |
+          V="$(sed -n 's/^KERNEL_VERSION=//p' sadim/kernel/version.mk | tr -d '[:space:]')"
+          test -n "$V" || { echo "::error::KERNEL_VERSION missing"; exit 1; }
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Kernel version: $V"
+
+      - name: Cache kernel tarball
+        uses: actions/cache@v4
+        with:
+          path: sadim/output/dl
+          key: linux-${{ steps.kv.outputs.version }}-tarball
+
+      - name: Install build toolchain + ISO tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bc bison flex libelf-dev libssl-dev libncurses-dev \
+            cpio rsync perl wget gzip xz-utils file \
+            qemu-system-x86 xorriso isolinux syslinux-common
+
+      - name: Build kernel (tinyconfig + sadim fragment)
+        run: bash sadim/kernel/build.sh
+
+      - name: Build initramfs (BusyBox + sadim rootfs + init v0.2)
+        run: bash sadim/initramfs/build.sh
+
+      - name: Build live ISO (BIOS hybrid CD/USB)
+        run: bash sadim/iso/build-iso.sh
+
+      - name: "ISO boot test in QEMU (real path: SeaBIOS→isolinux→init, gate: SADIM-BOOT-OK ×3)"
+        run: bash sadim/ci/boot-test-iso.sh
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sadim-live-iso-${{ github.run_id }}
+          path: |
+            sadim/output/sadim.iso
+            sadim/output/bzImage
+            sadim/output/initramfs.cpio.gz
+            sadim/output/iso-boot-log.txt
+          if-no-files-found: warn
