@@ -48,7 +48,7 @@ jobs:
       - name: Build initramfs (BusyBox + sadim init)
         run: bash sadim/initramfs/build.sh
 
-      - name: Boot test in QEMU (gate: SADIM-BOOT-OK)
+      - name: "Boot test in QEMU (gate: SADIM-BOOT-OK)"
         run: bash sadim/ci/boot-test.sh
 
       - name: Upload artifacts
