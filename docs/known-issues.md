@@ -49,7 +49,13 @@
 - **CI-5: تربل BusyBox غير مثبت البصمة (توريد)** → **أُغلقة**: تحميل التربل الرسمي من busybox.net عبر
   HTTPS وحساب SHA256 محلياً (`b8cc24c9574d809e7279c3be349795c5d5ceb6fdf19ca709f80cde50e47de314`)
   وتثبيته كثابت في `sadim/initramfs/build.sh` مع `sha256sum -c` يجهض البناء عند أي اختلاف — بنمط تحقق
-  نواة kernel.org نفسه.
+  نواة kernel.org نفسه. **دليل الإغلاق:** run #6 (43085770179, job 130749626216) سطر
+  `busybox-1.36.1.tar.bz2: OK` والبناء كامل ناجح.
+- **ENV-4: شهادة TLS لـ buildroot.org منتهية الصلاحية (2026-11-11)** → **تخفيف مُنفَّذ**: التنزيل من
+  المرآة الرسمية github.com/buildroot/buildroot (وسم `2025.02.19`، tag object `26cf1107…`) مثبت البصمة
+  `0fc9583d…c98` مع `sha256sum -c` في `sadim/rootfs/build.sh`. الدليل: خطأ
+  `ssl.SSLCertVerificationError: certificate has expired` من محاولة تنزيل حقيقية. يُعاد فحص الشهادة
+  دورياً — إن أُصلحت يمكن العودة للمصدر الأصلي (نفس الوسم، البصمة تُعاد الحساب).
 
 ## قواعد الإغلاق
 

@@ -1,8 +1,10 @@
 #!/bin/sh
-# Sadim OS — init v0.2 (جذر Live في RAM + وضع بوابة CI)
-# - يطبع وسم SADIM-BOOT-OK عند وصول النظام إلى init (بوابة المرحلة 2/ISO)
-# - وضع CI (SADIM_CI=1 في cmdline): وسم ثم إقلاع نظيف يُنهي QEMU
-# - وضع Live العادي: يسلّم لـ busybox init عبر /etc/inittab (gettys)
+# Sadim OS — init v0.3 (محمّل live: initramfs → squashfs+overlayfs → جذر مدمج)
+# - SADIM-BOOT-OK: وصول النظام إلى init (بوابة المرحلة 2 — ثابتة لا تتغير)
+# - مسار live rootfs: squashfs على vda (CI) أو sr0/sda (ISO حقيقي) → overlayfs → switch_root
+#   إلى جذر البناء (Buildroot) — النظام الحي قابل للكتابة عبر tmpfs
+# - مسار plain initramfs (توافق المرحلة 2): exec busybox init من الـ initramfs نفسه
+# - وضع CI (SADIM_CI=1): يُنهي الإقلاع نظيفاً من الجذر المدمج (S99-ci-end) أو من المحمّل
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin
 
 mount -t proc proc /proc 2>/dev/null    || echo "[init] WARN: proc mount failed"
@@ -13,7 +15,7 @@ hostname sadim 2>/dev/null
 
 echo ""
 echo "=================================================="
-echo "   Sadim OS (سديم) — live boot v0.2"
+echo "   Sadim OS (سديم) — live boot v0.3"
 echo "=================================================="
 echo "kernel : $(uname -r)"
 echo "uptime : $(cut -d ' ' -f1 /proc/uptime) s"
@@ -25,11 +27,61 @@ echo ""
 echo "SADIM-BOOT-OK"
 echo ""
 
-# وضع بوابة CI: إقلاع مباشر بـ SADIM_CI=1 → وسم ثم إعادة تشغيل نظيفة
-if grep -q "SADIM_CI=1" /proc/cmdline 2>/dev/null; then
+# ---------- 1) مسار الجذر الحي: squashfs + overlayfs ----------
+RO="/mnt/ro"
+LIVE_ROOT=""
+mkdir -p "$RO"
+for cand in /dev/vda /dev/sr0 /dev/sda; do
+  [ -b "$cand" ] || continue
+  # مسار CI/قرص: squashfs خام على الجهاز كله
+  if mount -o ro -t squashfs "$cand" "$RO" 2>/dev/null; then
+    LIVE_ROOT="squashfs:$cand"; break
+  fi
+  # مسار CD حقيقي: iso9660 يحمل الملف live/rootfs.squashfs → loop mount
+  if mount -o ro -t iso9660 "$cand" "$RO" 2>/dev/null; then
+    if [ -f "$RO/live/rootfs.squashfs" ]; then
+      mkdir -p /mnt/sq
+      if mount -t squashfs -o ro,loop "$RO/live/rootfs.squashfs" /mnt/sq 2>/dev/null; then
+        umount "$RO"
+        RO="/mnt/sq"
+        LIVE_ROOT="iso9660+loop:$cand"
+        break
+      fi
+    fi
+    umount "$RO"
+  fi
+done
+
+if [ -n "$LIVE_ROOT" ]; then
+  echo "[init] live rootfs found: $LIVE_ROOT"
+  RW="/mnt/rw"; NEW="/mnt/new"
+  mkdir -p "$RW/upper" "$RW/work" "$NEW"
+  mount -t tmpfs tmpfs "$RW" 2>/dev/null || echo "[init] WARN: tmpfs rw mount failed"
+  if ! mount -t overlay overlay \
+       -o "lowerdir=$RO,upperdir=$RW/upper,workdir=$RW/work" "$NEW" 2>/dev/null; then
+    echo "[init] FATAL: overlay mount failed — dumping diagnostics"
+    cat /proc/filesystems 2>/dev/null | head -20
+    exec sh
+  fi
+  echo "SADIM-LIVE-OK"
+  # نقل الجبلات الافتراضية إلى الجذر الجديد (مع بدائل احتياطية آمنة)
+  if ! mount -o move /proc "$NEW/proc" 2>/dev/null; then
+    mkdir -p "$NEW/proc"; mount -t proc proc "$NEW/proc"
+  fi
+  if ! mount -o move /sys "$NEW/sys" 2>/dev/null; then
+    mkdir -p "$NEW/sys"; mount -t sysfs sysfs "$NEW/sys"
+  fi
+  if ! mount -o move /dev "$NEW/dev" 2>/dev/null; then
+    mkdir -p "$NEW/dev"; mount -t devtmpfs devtmpfs "$NEW/dev"
+  fi
+  echo "[init] switching root to merged live system"
+  exec switch_root "$NEW" /sbin/init
+fi
+
+# ---------- 2) مسار plain initramfs (توافق المرحلة 2 / بلا rootfs خارجي) ----------
+if grep -qs "SADIM_CI=1" /proc/cmdline; then
   sleep 1
   reboot -f
 fi
-
-# وضع Live العادي: تسليم لـ busybox init (getty على tty1 و ttyS0)
+echo "[init] no live rootfs found — plain initramfs shell"
 exec /sbin/init

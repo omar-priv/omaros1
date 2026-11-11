@@ -1,6 +1,17 @@
 #!/bin/sh
-# Sadim OS — rcS v0.2
-mkdir -p /var/run /var/log /tmp
-chmod 1777 /tmp
-dmesg > /var/log/boot.log 2>/dev/null || true
+# Sadim OS — rcS v0.3: إطار الخدمات (تهيئة قابلة للكتابة + تشغيل /etc/init.d/S* بالترتيب)
+# يعمل على الجذر المدمج (squashfs+overlay) — أي خطأ يُطبع ولا يُخفى
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin
+
+mkdir -p /var/run /var/log /var/tmp /tmp
+chmod 1777 /tmp 2>/dev/null
+
+echo "[rcS] starting init.d services…"
+for s in /etc/init.d/S*; do
+  [ -x "$s" ] || continue
+  echo "[rcS] + $s"
+  "$s" start || echo "[rcS] WARN: $s failed"
+done
+
+echo "SADIM-ROOTFS-OK"
 echo "[rcS] Sadim OS system services ready"

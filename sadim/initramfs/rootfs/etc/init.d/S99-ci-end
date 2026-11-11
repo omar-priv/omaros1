@@ -1,0 +1,9 @@
+#!/bin/sh
+# وضع بوابة CI: على الجذر المدمج بعد اكتمال كل الخدمات → إقلاع نظيف يُنهي QEMU
+if grep -qs "SADIM_CI=1" /proc/cmdline; then
+  echo "[ci] services complete — clean reboot"
+  sync
+  sleep 1
+  reboot -f
+fi
+exit 0

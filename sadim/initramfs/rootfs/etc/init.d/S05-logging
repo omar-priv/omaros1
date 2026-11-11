@@ -1,0 +1,7 @@
+#!/bin/sh
+# سجل إقلاع فعلي — يُكتب على الجذر القابل للكتابة (overlay) في /var/log
+{
+  echo "[boot] $(date -u '+%Y-%m-%dT%H:%M:%SZ') kernel=$(uname -r)"
+  grep -s '^MemTotal:' /proc/meminfo
+} >> /var/log/boot.log 2>/dev/null
+dmesg >> /var/log/dmesg.log 2>/dev/null
