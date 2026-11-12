@@ -18,12 +18,14 @@ cp "$OUT/bzImage" "$ISODIR/boot/vmlinuz-sadim"
 cp "$OUT/initramfs.cpio.gz" "$ISODIR/boot/initramfs-sadim.img"
 cp "$OUT/rootfs.squashfs" "$ISODIR/live/rootfs.squashfs"
 
-cat > "$ISODIR/sadim/VERSION" <<'EOF'
+KERNEL_RELEASE="$(sed -n 's/^CONFIG_LOCALVERSION="\\(.*\\)"/\\1/p' "$ROOT/kernel/fragments/qemu-minimal.config" | tr -d '\\"')"
+KERNEL_RELEASE="6.12.117${KERNEL_RELEASE:--sadim}"
+cat > "$ISODIR/sadim/VERSION" <<EOF
 Sadim OS 0.2-daily
 Build: $(date -u +%Y-%m-%dT%H:%M:%SZ)
-Kernel: $(uname -r 2>/dev/null || echo 6.12.117-sadim-phase4)
+Kernel: ${KERNEL_RELEASE}
 Target: Acer E5-576G (i5-7200U, 4GB RAM, SMR HDD)
-USB: USB 2.0 متوافق
+USB: USB 2.0 compatible
 EOF
 
 cat > "$ISODIR/isolinux/isolinux.cfg" <<'EOF'
