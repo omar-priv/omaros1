@@ -1,3 +1,5 @@
 root:x:0:
 tty:x:5:
 sadim:x:1000:
+seat:x:998:sadim
+seatd:x:999:
