@@ -1,12 +1,9 @@
 #!/bin/sh
 # Sadim OS — مراقبة تلقائية للأداء والموارد (مرحلة 7)
-# تراقب: RAM، CPU، IO، درجة الحرارة، مساحة القرص
-# تسجل في /var/log/sadim-monitor.log كل 5 دقائق
-# مصممة لتكون خفيفة جداً (لا تضغط على موارد 4GB RAM)
 set -u
 
 LOG_FILE="/var/log/sadim-monitor.log"
-INTERVAL="${SADIM_MONITOR_INTERVAL:-300}"  # 5 دقائق افتراضياً
+INTERVAL="${SADIM_MONITOR_INTERVAL:-300}"
 PID_FILE="/var/run/sadim-monitor.pid"
 
 log() { echo "[monitor] $*"; }
@@ -15,7 +12,6 @@ collect_metrics() {
   local ts
   ts=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
-  # ذاكرة RAM
   local mem_total mem_free mem_avail mem_used mem_pct
   if [ -r /proc/meminfo ]; then
     mem_total=$(grep '^MemTotal:' /proc/meminfo | awk '{print $2}')
@@ -31,7 +27,6 @@ collect_metrics() {
     mem_pct="N/A"
   fi
 
-  # تحميل CPU (أ minuto)
   local load1 load5 load15
   if [ -r /proc/loadavg ]; then
     read -r load1 load5 load15 _ < /proc/loadavg
@@ -39,38 +34,32 @@ collect_metrics() {
     load1="N/A"
   fi
 
-  # درجة الحرارة (إن وجدت)
   local temp="N/A"
   if [ -r /sys/class/thermal/thermal_zone0/temp ]; then
     temp=$(( $(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0) / 1000 ))
   fi
 
-  # IO على الهارد (읽/كتابة قطاعات)
   local io_rd io_wr
   if [ -r /proc/diskstats ]; then
     io_rd=$(awk '/sda|nvme/ {rd+=$6} END {print rd+0}' /proc/diskstats 2>/dev/null)
     io_wr=$(awk '/sda|nvme/ {wr+=$10} END {print wr+0}' /proc/diskstats 2>/dev/null)
   fi
 
-  # مساحة القرص المتاحة
   local disk_avail disk_pct
   if [ -x /bin/df ]; then
     disk_avail=$(df / 2>/dev/null | awk 'NR==2 {print $4}')
     disk_pct=$(df / 2>/dev/null | awk 'NR==2 {print $5}' | tr -d '%')
   fi
 
-  # حالة zRAM swap
   local swap_status="none"
   if [ -b /dev/zram0 ]; then
     swap_status=$(swapon --show 2>/dev/null | grep zram | awk '{print $4}' 2>/dev/null || echo "active")
   fi
 
-  # كتابة السجل
   {
     echo "$ts | RAM: ${mem_pct}% | CPU_load: ${load1} | Temp: ${temp}C | Disk_avail: ${disk_avail}KB | Disk_use: ${disk_pct}% | IO_rd: ${io_rd} | IO_wr: ${io_wr} | Swap: ${swap_status}"
   } >> "$LOG_FILE" 2>/dev/null
 
-  # تنبيه إذا كانت الذاكرة مرتفعة جداً (أكثر من 85%)
   if [ "$mem_pct" != "N/A" ] && [ "$mem_pct" -gt 85 ] 2>/dev/null; then
     echo "$ts | WARNING: استهلاك الذاكرة مرتفع ${mem_pct}% — جاري تفريغ ذاكرة zRAM" >> "$LOG_FILE" 2>/dev/null
     sync 2>/dev/null
@@ -81,9 +70,8 @@ collect_metrics() {
 start_monitor() {
   mkdir -p /var/log
   touch "$LOG_FILE"
-  log "بدء المراقبة التلقائية (الفاصل: ${INTERVAL ثانية)…"
+  log "بدء المراقبة التلقائية (الفاصل: ${INTERVAL} ثانية)…"
 
-  # تشغيل المراقبة في الخلفية (حلقة)
   (
     while :; do
       collect_metrics

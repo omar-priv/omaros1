@@ -1,6 +1,6 @@
 #!/bin/sh
 # Sadim OS — تحسين الهارد الميكانيكي SMR (مرحلة 7)
-# يُلغِي kirjainträge العشوائية على القرص SMR، يضبط noatime، writeback، ويقلل المزامنة
+# يُلغِي書き込м العشوائية على القرص SMR، يضبط noatime، writeback، ويقلل المزامنة
 # الهدف: حل بطئ الهارد الميكانيكي WD10SPZX 1TB SMR
 set -u
 
@@ -9,45 +9,34 @@ log() { echo "[smr] $*"; }
 optimize_smr() {
   log "بدء تحسين الهارد SMR…"
 
-  # 1. تعيين noatime/nodiratime لجميع أنظمة الملفات mounted
-  # (عدم تسجيل وقت الوصول يقلل كتابات 읽기의 على القرص)
   mount -o remount,noatime,nodiratime / 2>/dev/null && \
     log "تم تفعيل noatime/nodiratime على الجذر" || \
     log "WARN: تعذر إعادة mounting الجذر مع noatime"
 
-  # 2. ضبط وضع writeback للقرص (تجميع الكتابات بدلاً من كتابات فورية)
-  # ⚠️ تعليق: تعطيل write cache (hdparm -W 0) قد يقلل أداء القرص بشكل كبير
-  # يُفعّل فقط إذا حدد المستخدم SADIM_SMR_PROTECT_STRICT=1
   if [ -b /dev/sda ] && [ "${SADIM_SMR_PROTECT_STRICT:-0}" = "1" ]; then
     log "تفعيل حماية SMR الصارمة (تعطيل write cache على /dev/sda)…"
     hdparm -W 0 /dev/sda 2>/dev/null && \
       log "تم تعطيل write cache على /dev/sda (حماية SMR)" || \
       log "WARN: تعذر ضبط hdparm على /dev/sda"
   else
-    log "INFO: حماية SMR العادية مفعّلة (noatime + tmpfs + zRAM) — write cache مُفعّل للأداء"
+    log "INFO: حماية SMR العادية مفعّلة (noatime + tmpfs + zRAM) — write cache مفعّل للأداء"
   fi
 
-  # 3. ضبط معاييرvm للحد من الكتابة المتواصلة على القرص
-  echo 10 > /proc/sys/vm/dirty_ratio 2>/dev/null || true   # ابدأ الكتابة عند 10% فقط من الذاكرة المتسخة
-  echo 5 > /proc/sys/vm/dirty_background_ratio 2>/dev/null || true  # ابدأ الكتابة في الخلفية عند 5%
-  echo 500 > /proc/sys/vm/dirty_expire_centisecs 2>/dev/null || true  # انتهاء صلاحية البيانات المتسخة بعد 5 ثوانٍ
-  echo 1000 > /proc/sys/vm/dirty_writeback_centisecs 2>/dev/null || true  # فحص الكتابة كل 10 ثوانٍ
-  log "تم ضبط معايير vm لتقليل書き込м على القرص SMR"
+  echo 10 > /proc/sys/vm/dirty_ratio 2>/dev/null || true
+  echo 5 > /proc/sys/vm/dirty_background_ratio 2>/dev/null || true
+  echo 500 > /proc/sys/vm/dirty_expire_centisecs 2>/dev/null || true
+  echo 1000 > /proc/sys/vm/dirty_writeback_centisecs 2>/dev/null || true
+  log "تم ضبط معايير vm لتقليل書き込م على القرص SMR"
 
-  # 4. تعطيل خدمات الفهرسة إذا كانت موجودة (تقلل الكتابات العشوائية)
-  # لا توجد systemd في سديم، لكن نوقف أي عمليات فهرسة
-
-  # 5. تأجيل مزامنة القرص (أقل تكرار)
   echo 30 > /proc/sys/vm/laptop_mode 2>/dev/null || true
   log "تم تفعيل laptop_mode (تقليل مزامنة القرص)"
 
-  # 6. عرض معلومات القرص للتثبيت
   if [ -x /sbin/hdparm ]; then
     log "معلومات القرص:"
     hdparm -I /dev/sda 2>/dev/null | grep -E 'Model|Sector|Rotation|Trim' | head -5 || true
   fi
 
-  log "تحسين SMR مكتمل — הספרع mechanical محمي الآن"
+  log "تحسين SMR مكتمل — الكتابع الميكانيكي محمي الآن"
 }
 
 status_smr() {

@@ -1,6 +1,5 @@
 #!/bin/sh
 # Sadim OS — خدمة الطاقة والبطارية (مرحلة 6)
-# Acer E5-576G — بطارية بصحة ≈60%، مراقبة حقيقية للطاقة
 set -u
 
 log() { echo "[power] $*"; }
@@ -8,13 +7,12 @@ log() { echo "[power] $*"; }
 start_power() {
   log "بدء مراقبة الطاقة والبطارية…"
 
-  # تحميل تعريفات ACPI للطاقة والبطارية
   modprobe battery 2>/dev/null || log "WARN: تعذر تحميل battery"
   modprobe ac 2>/dev/null || log "WARN: تعذر تحميل ac"
   modprobe acpi_battery 2>/dev/null || log "WARN: تعذر تحميل acpi_battery"
   modprobe thermal 2>/dev/null || log "WARN: تعذر تحميل thermal"
+  modprobe hwmon 2>/dev/null || log "WARN: تعذر تحميل hwmon"
 
-  # عرض حالة البطارية إذا كانت موجودة
   if [ -d /sys/class/power_supply ]; then
     for bat in /sys/class/power_supply/BAT*; do
       [ -d "$bat" ] || continue
@@ -27,12 +25,6 @@ start_power() {
     log "لا توجد بطارية مكتشفة (قد يكون نظام ثابتاً)"
   fi
 
-  # عرض حالة محول الطاقة
-  if [ -d /sys/class/power_supply/AC* ] || [ -d /sys/class/power_supply/ADP* ]; then
-    log "محول الطاقة متصل"
-  fi
-
-  # إعداد وضع توفير الطاقة للقرص SMR (تقليل書き込م)
   log "تفعيل وضع توفير الطاقة للقرص الميكانيكي SMR"
 }
 

@@ -1,55 +1,51 @@
 #!/bin/sh
 # Sadim OS — خدمة Weston: compositor Wayland (DRM + pixman)
-# تبدأ بعد seatd + network — العلامة: SADIM-GUI-OK عند بدء compositor بنجاح
+set -u
 
 DAEMON=/usr/bin/weston
 NAME=weston
 PIDFILE=/var/run/weston.pid
-# متغيرات بيئة Wayland
 export XDG_RUNTIME_DIR=/run/user/0
 export WAYLAND_DISPLAY=wayland-0
 
-[ -x "$DAEMON" ] || { echo "[weston] binary not found: $DAEMON"; exit 0; }
+log() { echo "[weston] $*"; }
 
-# ننتظر socket seatd (أقصى 10 ثوانٍ)
-wait_for_seatd() {
+start_weston() {
+  [ -x "$DAEMON" ] || { echo "[weston] binary not found: $DAEMON"; exit 0; }
+
+  echo "[weston] waiting for seatd…"
   for i in $(seq 1 20); do
     [ -S /run/seatd.sock ] && return 0
     sleep 0.5
   done
   echo "[weston] WARN: seatd socket not ready after 10s"
-  return 1
+
+  mkdir -p "$XDG_RUNTIME_DIR"
+  chmod 700 "$XDG_RUNTIME_DIR"
+
+  echo "[weston] starting Weston compositor (DRM backend, pixman renderer)…"
+  start-stop-daemon -S -b -m -p "$PIDFILE" -x "$DAEMON" -- \
+    -B drm --renderer=pixman -c /etc/xdg/weston/weston.ini \
+    --socket=wayland-0 --no-config 2>/dev/null
+
+  sleep 2
+  if [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then
+    echo "SADIM-GUI-OK"
+  else
+    echo "[weston] WARN: Wayland socket not created"
+  fi
+}
+
+stop_weston() {
+  echo "[weston] stopping Weston…"
+  start-stop-daemon -K -p "$PIDFILE"
+  rm -f "$PIDFILE" "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
 }
 
 case "$1" in
-  start)
-    echo "[weston] waiting for seatd…"
-    wait_for_seatd || true
-    mkdir -p "$XDG_RUNTIME_DIR"
-    chmod 700 "$XDG_RUNTIME_DIR"
-    echo "[weston] starting Weston compositor (DRM backend, pixman renderer)…"
-    # -B drm: backend DRM (virtio-gpu في QEMU، i915 على الجهاز الحقيقي)
-    # --renderer=pixman: تصيير برمجي (بلا EGL/GLES/GBM)
-    # -c: ملف التكوين
-    # --socket=wayland-0: اسم socket Wayland
-    start-stop-daemon -S -b -m -p "$PIDFILE" -x "$DAEMON" -- \
-      -B drm --renderer=pixman -c /etc/xdg/weston/weston.ini \
-      --socket=wayland-0 --no-config 2>/dev/null
-    # نتحقق من بدء weston بنجاح
-    sleep 2
-    if [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then
-      echo "SADIM-GUI-OK"
-    else
-      echo "[weston] WARN: Wayland socket not created"
-    fi
-    ;;
-  stop)
-    echo "[weston] stopping Weston…"
-    start-stop-daemon -K -p "$PIDFILE"
-    rm -f "$PIDFILE" "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
-    ;;
-  *)
-    echo "Usage: $0 {start|stop}"
-    exit 1
-    ;;
+  start) start_weston ;;
+  stop)  stop_weston ;;
+  restart) stop_weston; sleep 1; start_weston ;;
+  *) echo "Usage: $0 {start|stop|restart}"; exit 1 ;;
 esac
+exit 0

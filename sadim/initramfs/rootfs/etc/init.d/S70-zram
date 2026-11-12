@@ -1,40 +1,32 @@
 #!/bin/sh
-# Sadim OS — خدمة zRAM (مرحلة 7 — حل أساسي لبطئ الهارد SMR)
-# بدلاً من swap على الهارد الميكانيكي SMR (بطيء جداً)، نستخدم zRAM في الذاكرة
-# يتم ضغط صفحات الذاكرة غير المستخدمة في RAM نفسها، مما يلغي الحاجة للكتابة على الهارد
+# Sadim OS — خدمة zRAM (مرحلة 7 — بديل swap للهارد SMR)
 set -u
 
 ZRAM_DEV="/dev/zram0"
-ZRAM_SIZE="256M"   # 256MB zRAM (مناسب لـ 4GB RAM، لا يضغط على الموارد)
+ZRAM_SIZE="256M"
 
 log() { echo "[zram] $*"; }
 
 start_zram() {
   log "بدء تهيئة zRAM (بديل swap للهارد SMR)…"
 
-  # تحميل تعريف zram
-  modprobe zram 2>/dev/null || log "WARN: تعذر تحميل zram (قد يكون مدمجاً في النواة)"
+  modprobe zram 2>/dev/null || log "WARN: تعذر تحميل zram"
 
-  # تعيين حجم zRAM
   if [ -b "$ZRAM_DEV" ]; then
     echo "$ZRAM_SIZE" > /sys/block/zram0/disksize 2>/dev/null || \
-      log "WARN: تعذر تعيين حجم zram0 (قد يكون مستخدماً مسبقاً)"
+      log "WARN: تعذر تعيين حجم zram0"
   fi
 
-  # تهيئة zram كأداة swap
   if [ -x /sbin/mkswap ]; then
     mkswap "$ZRAM_DEV" 2>/dev/null || log "WARN: تعذر تهيئة zram0 ك-swap"
   fi
 
-  # تفعيل swap على zRAM (أولوية أعلى من أي swap على الهارد)
   if [ -x /sbin/swapon ]; then
     swapon "$ZRAM_DEV" -p 100 2>/dev/null || log "WARN: تعذر تفعيل swap على zram0"
     log "تم تفعيل zRAM swap (الحجم: $ZRAM_SIZE) — لا كتابات على الهارد SMR"
   fi
 
-  # تعطيل أي swap موجود على الهارد الميكانيكي (لحماية SMR)
   if [ -f /proc/swaps ]; then
-    # نبحث عن ملفات swap على أجهزة 실제 (ليست zram)
     grep -v zram /proc/swaps 2>/dev/null | awk 'NR>1 {print $1}' | while read swapdev; do
       [ -n "$swapdev" ] && swapoff "$swapdev" 2>/dev/null && log "تم تعطيل swap على $swapdev (حماية SMR)"
     done

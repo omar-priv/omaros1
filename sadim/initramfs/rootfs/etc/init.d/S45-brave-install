@@ -11,15 +11,12 @@ BRAVE_DIR="/opt/brave"
 BRAVE_BIN="$BRAVE_DIR/brave-browser"
 BRAVE_INSTALLED_FLAG="/var/lib/brave-installed"
 BRAVE_URL="https://github.com/brave/brave-browser/releases/latest/download/brave-browser-linux-x64.zip"
-# ⚠️ يجب تحديث هذه التجزئة من الموقع الرسمي لـ Brave قبل كل إصدار
-# يمكن الحصول عليها عبر: sha256sum brave-browser-linux-x64.zip
 BRAVE_EXPECTED_SHA256=""
 BRAVE_SIGNATURE_URL="https://github.com/brave/brave-browser/releases/latest/download/brave-browser-linux-x64.zip.sig"
 
 install_brave() {
   log "بدء تحميل وتثبيت متصفح Brave Browser…"
 
-  # التحقق من وجود الأدوات المطلوبة
   if ! command -v wget >/dev/null 2>&1; then
     log "ERROR: wget غير مثبت — لا يمكن تحميل Brave Browser"
     return 1
@@ -31,17 +28,14 @@ install_brave() {
     return 1
   fi
 
-  # إنشاء مجلد التثبيت
   mkdir -p "$BRAVE_DIR"
   mkdir -p /var/lib
 
-  # إذا كان مثبّتاً مسبقاً، لا نعيد التحميل
   if [ -f "$BRAVE_INSTALLED_FLAG" ] && [ -x "$BRAVE_BIN" ]; then
     log "Brave Browser مثبت مسبقاً — تخطي التثبيت"
     return 0
   fi
 
-  # تحميل Brave Browser
   log "تحميل Brave Browser من: $BRAVE_URL"
   if ! wget -q -O /tmp/brave-browser.zip "$BRAVE_URL" 2>/dev/null; then
     log "ERROR: تعذر تحميل Brave Browser — تحقق من اتصال الإنترنت"
@@ -49,7 +43,6 @@ install_brave() {
     return 1
   fi
 
-  # التحقق من التجزئة (SHA256) إذا كانت محددة
   if [ -n "$BRAVE_EXPECTED_SHA256" ] && command -v sha256sum >/dev/null 2>&1; then
     log "التحقق من تجزئة الملف المحمل…"
     ACTUAL_SHA256=$(sha256sum /tmp/brave-browser.zip 2>/dev/null | awk '{print $1}')
@@ -68,20 +61,14 @@ install_brave() {
 
   log "تم تحميل Brave Browser — جاري الاستخراج…"
 
-  # استخراج الملفات
   if ! unzip -o /tmp/brave-browser.zip -d "$BRAVE_DIR" 2>/dev/null; then
     log "ERROR: تعذر استخراج ملف Brave Browser"
     rm -f /tmp/brave-browser.zip
     return 1
   fi
 
-  # جعل الملف التنفيذي قابلاً للتنفيذ
   chmod +x "$BRAVE_BIN" 2>/dev/null || true
-
-  # إزالة ملف التحميل المؤقت
   rm -f /tmp/brave-browser.zip
-
-  # إنشاء علامة التثبيت
   touch "$BRAVE_INSTALLED_FLAG"
 
   log "تم تثبيت متصفح Brave Browser بنجاح في: $BRAVE_DIR"

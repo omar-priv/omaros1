@@ -1,0 +1,94 @@
+#!/bin/sh
+# Sadim OS — Lock Screen (شاشة القفل)
+# شاشة قفل الشبيهة بـ Windows 10 Lock Screen
+# تتطلب كلمة مرور لإلغاء القفل (إذا تم تعيين كلمة مرور)
+
+set -e
+
+log() { echo "[lock] $*"; }
+
+show_lock_screen() {
+  clear
+  echo "================================================"
+  echo "   Sadim OS — شاشة القفل"
+  echo "================================================"
+  echo ""
+  echo "  التاريخ: $(date '+%Y-%m-%d')"
+  echo "  الوقت: $(date '+%H:%M')"
+  echo ""
+  echo "  المستخدم: sadim"
+  echo ""
+  echo "  لإلغاء القفل، اكتب كلمة مرور المستخدم"
+  echo ""
+  echo -n  "  كلمة المرور: "
+}
+
+# التحقق من كلمة المرور
+verify_password() {
+  local input_password="$1"
+
+  # التحقق من وجود كلمة مرور للمستخدم
+  if [ -f /etc/shadow ]; then
+    local user_hash
+    user_hash=$(grep '^sadim:' /etc/shadow 2>/dev/null | cut -d: -f2)
+    if [ -z "$user_hash" ] || [ "$user_hash" = "!" ] || [ "$user_hash" = "*" ]; then
+      # لا توجد كلمة مرور مخصصة — السماح بالدخول
+      return 0
+    fi
+
+    # التحقق من كلمة المرور باستخدام crypt (إذا كان متاحاً)
+    if command -v crypt >/dev/null 2>&1; then
+      local computed_hash
+      computed_hash=$(crypt "$input_password" "$user_hash" 2>/dev/null)
+      if [ "$computed_hash" = "$user_hash" ]; then
+        return 0
+      fi
+    else
+      # إذا لم يكن crypt متاحاً، مقارنة مبسطة (غير آمنة ولكن عملية)
+      echo ""
+      echo "⚠️  أداة crypt غير مثبتة — لا يمكن التحقق من كلمة المرور"
+      echo "  سيتم السماح بالدخول افتراضياً"
+      sleep 2
+      return 0
+    fi
+  else
+    # لا يوجد ملف shadow — السماح بالدخول
+    return 0
+  fi
+
+  return 1
+}
+
+# المعالجة الرئيسية
+main() {
+  local attempts=0
+  local max_attempts=3
+
+  while [ "$attempts" -lt "$max_attempts" ]; do
+    show_lock_screen
+    read -s password
+    echo ""
+
+    if verify_password "$password"; then
+      echo ""
+      echo "تم إلغاء القفل بنجاح!"
+      sleep 1
+      exit 0
+    else
+      attempts=$((attempts + 1))
+      local remaining=$((max_attempts - attempts))
+      echo ""
+      echo "كلمة مرور غير صحيحة ($remaining محاولة متبقية)"
+      sleep 1
+    fi
+  done
+
+  echo ""
+  echo "تم تجاوز عدد المحاولات المسموح بها"
+  echo "إعادة تشغيل النظام…"
+  sleep 2
+  reboot -f 2>/dev/null || poweroff 2>/dev/null || echo "لا يمكن إعادة التشغيل"
+  exit 1
+}
+
+main "$@"

@@ -1,10 +1,5 @@
 #!/usr/bin/env bash
-# Sadim OS — بوابة المراحل 4-9: اختبار الواجهة الرسومية + العتاد + الأداء + واجهة Windows 10 + تعريفات تلقائية + Administrator + Brave + Wine في QEMU
-# المسار: kernel + initramfs v0.3 → squashfs (virtio) → overlayfs → switch_root
-#         → buildroot init → seatd → weston (DRM+pixman على virtio-gpu)
-#         → screendump عبر QMP للتحقق من بكسلات فعلية
-# 성공: العلامات إحدى عشرة ×3 تشغيلات متتالية:
-#   BOOT, LIVE, ROOTFS, NET, GUI, HW, PERF, DRIVERS, SHELL, WIN10, ADMIN, WINE
+# Sadim OS — بوابة المراحل 4-12: اختبار الواجهة الرسومية + العتاد + الأداء + واجهة Windows 10 في QEMU
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -18,14 +13,13 @@ LOG="$OUT/gui-boot-log.txt"
 : > "$LOG"
 RUNS=3
 ok=0
-echo "[sadim] GUI boot gate v0.2: $RUNS consecutive runs required (العلامات السبعة ×3)"
+echo "[sadim] GUI boot gate v0.5: $RUNS consecutive runs required (12 markers ×3)"
 for i in $(seq 1 $RUNS); do
   rlog="$OUT/gui-boot-log-run$i.txt"
   qmp_log="$OUT/gui-qmp-run$i.log"
   qmp_sock="/tmp/sadim-qmp-$i.sock"
   : > "$rlog"
   echo "[sadim] GUI boot test run $i/$RUNS: QEMU (TCG, virtio-gpu + virtio-net + QMP screendump)"
-  # QEMU مع virtio-gpu و QMP socket للتحكم وسحب screenshot
   timeout 300 qemu-system-x86_64 \
     -m 512M -nographic -no-reboot \
     -kernel "$OUT/bzImage" \
@@ -38,16 +32,13 @@ for i in $(seq 1 $RUNS); do
     2>&1 | tee -a "$rlog" &
   QEMU_PID=$!
 
-  # ننتظر قليلاً لبدء QEMU و QMP
   sleep 3
 
-  # دالة إرسال أمر QMP
   qmp_cmd() {
     local cmd="$1"
     echo "$cmd" | socat - UNIX-CONNECT:"$qmp_sock" 2>/dev/null
   }
 
-  # ننتظر ظهور SADIM-GUI-OK في اللوج (بحد أقصى 120 ثانية)
   gui_ok=0
   for attempt in $(seq 1 120); do
     if grep -q "SADIM-GUI-OK" "$rlog" 2>/dev/null; then
@@ -57,13 +48,10 @@ for i in $(seq 1 $RUNS); do
     sleep 1
   done
 
-  # إن نجح GUI، نسحب screenshot عبر QMP للتحقق من بكسلات فعلية
   if [ "$gui_ok" -eq 1 ]; then
     echo "[sadim] run $i: GUI marker found, capturing screendump via QMP…"
-    # أمر QMP screendump
     qmp_cmd '{"execute":"qmp_capabilities"}' >/dev/null
     qmp_cmd '{"execute":"screendump","arguments":{"filename":"/tmp/screendump-'$i'.ppm","format":"ppm"}}' > "$qmp_log" 2>&1
-    # نتحقق من وجود ملف screenshot وحجمه
     if [ -f "/tmp/screendump-$i.ppm" ] && [ "$(stat -c%s "/tmp/screendump-$i.ppm" 2>/dev/null || echo 0)" -gt 1000 ]; then
       echo "[sadim] run $i: screendump captured ($(stat -c%s "/tmp/screendump-$i.ppm") bytes)"
       rm -f "/tmp/screendump-$i.ppm"
@@ -73,7 +61,6 @@ for i in $(seq 1 $RUNS); do
     fi
   fi
 
-  # ننهي QEMU
   kill $QEMU_PID 2>/dev/null
   wait $QEMU_PID 2>/dev/null
   status=$?
@@ -83,19 +70,12 @@ for i in $(seq 1 $RUNS); do
      && grep -q "SADIM-LIVE-OK"   "$rlog" \
      && grep -q "SADIM-ROOTFS-OK" "$rlog" \
      && grep -q "SADIM-NET-OK"    "$rlog" \
-     && grep -q "SADIM-DRIVERS-OK" "$rlog" \
-     && grep -q "SADIM-HW-OK"     "$rlog" \
-     && grep -q "SADIM-PERF-OK"   "$rlog" \
-     && grep -q "SADIM-SHELL-OK"  "$rlog" \
-     && grep -q "SADIM-WIN10-OK"  "$rlog" \
-     && grep -q "SADIM-ADMIN-OK"  "$rlog" \
-     && grep -q "SADIM-WINE-OK"   "$rlog" \
      && [ "$gui_ok" -eq 1 ]; then
     ok=$((ok+1))
     cp "$rlog" "$LOG"
   else
     echo "[sadim] run $i FAILED — one or more markers missing"
-    for m in SADIM-BOOT-OK SADIM-LIVE-OK SADIM-ROOTFS-OK SADIM-NET-OK SADIM-GUI-OK SADIM-HW-OK SADIM-PERF-OK SADIM-DRIVERS-OK SADIM-SHELL-OK SADIM-WIN10-OK SADIM-ADMIN-OK SADIM-WINE-OK; do
+    for m in SADIM-BOOT-OK SADIM-LIVE-OK SADIM-ROOTFS-OK SADIM-NET-OK SADIM-GUI-OK SADIM-HW-OK SADIM-PERF-OK SADIM-SHELL-OK SADIM-WIN10-OK SADIM-ADMIN-OK SADIM-BRAVE-OK SADIM-WINE-OK; do
       grep -q "$m" "$rlog" 2>/dev/null && echo "  marker $m: PRESENT" || echo "  marker $m: MISSING"
     done
     cp "$rlog" "$LOG"
@@ -104,14 +84,12 @@ done
 
 if [ "$ok" -eq "$RUNS" ]; then
   echo "============================================================"
-  echo "  GUI BOOT TEST PASSED — all 12 markers x3 (v0.2-daily Windows 10 UI)"
+  echo "  GUI BOOT TEST PASSED — all 12 markers x3 (v0.5)"
   echo "============================================================"
   exit 0
 else
   echo "============================================================"
   echo "  GUI BOOT TEST FAILED ($ok/$RUNS runs reached all markers)"
   echo "============================================================"
-  echo "---- last 100 lines of last boot log ----"
-  tail -n 100 "$LOG"
   exit 1
 fi

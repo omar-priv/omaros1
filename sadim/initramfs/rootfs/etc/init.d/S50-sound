@@ -1,6 +1,5 @@
 #!/bin/sh
 # Sadim OS — خدمة الصوت Realtek HD Audio + Intel Display Audio
-# مرحلة 6: تعريف العتاد الحقيقي — صوت Acer E5-576G
 set -u
 
 log() { echo "[sound] $*"; }
@@ -8,19 +7,16 @@ log() { echo "[sound] $*"; }
 start_sound() {
   log "بدء تشغيل تعريفات الصوت…"
 
-  # تحميل تعريفات ALSA لـ Intel HD Audio / Realtek
   modprobe snd-hda-intel 2>/dev/null || log "WARN: تعذر تحميل snd-hda-intel"
   modprobe snd-hda-codec-realtek 2>/dev/null || log "WARN: تعذر تحميل snd-hda-codec-realtek"
   modprobe snd-hda-codec-hdmi 2>/dev/null || log "WARN: تعذر تحميل snd-hda-codec-hdmi"
 
-  # التحقق من وجود بطاقة صوت
   if [ -d /proc/asound ]; then
     log "تم اكتشاف بطاقة صوت: $(ls /proc/asound/card*/id 2>/dev/null | tr '\n' ' ')"
   else
     log "لا توجد بطاقة صوت مكتشفة — قد تتطلب إعادة تشغيل"
   fi
 
-  # تعيين مستوى افتراضي آمن (لتجنب الصدمات الصوتية)
   if [ -x /usr/bin/amixer ]; then
     amixer set Master 50% 2>/dev/null || true
     amixer set PCM 70% 2>/dev/null || true

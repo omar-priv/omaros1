@@ -7,13 +7,10 @@ set -u
 
 log() { echo "[drivers] $*"; }
 
-# التحقق من أن النظام يعمل فعلياً (ليس في initramfs قبل switch_root)
 is_runtime_ready() {
-  # إذا كان /proc مmounted و /sys مmounted، فإن النظام جاهز لتحميل التعريفات
   if [ ! -d /proc ] || [ ! -d /sys ]; then
     return 1
   fi
-  # التحقق من أن modprobe متاح
   if ! command -v modprobe >/dev/null 2>&1; then
     return 1
   fi
@@ -23,13 +20,11 @@ is_runtime_ready() {
 load_driver() {
   local drv="$1"
 
-  # التحقق من أن النظام جاهز لتحميل التعريفات
   if ! is_runtime_ready; then
     log "INFO: النظام غير جاهز لتحميل التعريفات (قد يكون في initramfs) — تخطي $drv"
     return 0
   fi
 
-  # التحقق من وجود التعريف قبل محاولة التحميل
   if [ ! -f "/lib/modules/$(uname -r 2>/dev/null)/kernel/$drv.ko" ] 2>/dev/null && \
      [ ! -f "/lib/modules/$(uname -r 2>/dev/null)/kernel/drivers/*/$drv.ko" ] 2>/dev/null; then
     log "INFO: تعريف $drv غير موجود في النواة (قد يكون مدمجاً أو غير مطلوب)"
@@ -51,49 +46,49 @@ start_drivers() {
     return 0
   fi
 
-  # 1. تعريفات الشاشة والعرض
+  # تعريفات الشاشة والعرض
   load_driver i915           # Intel HD 620
   load_driver drm_kms_helper
   load_driver fbcon
 
-  # 2. تعريفات الشبكة
+  # تعريفات الشبكة
   load_driver r8169          # Realtek Ethernet
   load_driver ath10k_pci     # Wi-Fi QCA9377
   load_driver mac80211
   load_driver cfg80211
 
-  # 3. تعريفات الصوت
+  # تعريفات الصوت
   load_driver snd-hda-intel
   load_driver snd-hda-codec-realtek
   load_driver snd-hda-codec-hdmi
 
-  # 4. تعريفات الطاقة والبطارية
+  # تعريفات الطاقة والبطارية
   load_driver battery
   load_driver ac
   load_driver acpi_battery
   load_driver thermal
   load_driver hwmon
 
-  # 5. تعريفات USB 2.0 (للفلاشة والأجهزة الخارجية)
+  # تعريفات USB 2.0 (للفلاشة والأجهزة الخارجية)
   load_driver usb-storage
   load_driver uas
   load_driver ohci-hcd
   load_driver ehci-hcd
   load_driver xhci-hcd
 
-  # 6. تعريفات لمس اللوحة واللوحة المفاتيح
+  # تعريفات لمس اللوحة واللوحة المفاتيح
   load_driver psmouse
   load_driver synaptics
   load_driver elantech
   load_driver atkbd
   load_driver i8042
 
-  # 7. تعريفات أنظمة الملفات (دعم قراءة أقسام Windows NTFS/FAT)
+  # تعريفات أنظمة الملفات (دعم قراءة أقسام Windows NTFS/FAT)
   load_driver ntfs
   load_driver fat
   load_driver vfat
 
-  # 8. تعريفات التشفير والأمان
+  # تعريفات التشفير والأمان
   load_driver aes
   load_driver sha256
   load_driver hmac

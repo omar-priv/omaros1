@@ -61,11 +61,11 @@ process_input() {
       WAITING=0
       ;;
     "."|"،")
-      if echo "$CURRENT" | grep -q '\.'; then
-        : # تحتوي بالفعل على نقطة
-      else
-        CURRENT="${CURRENT}."
-      fi
+      # التحقق من وجود نقطة عشرية بالفعل
+      case "$CURRENT" in
+        *.* ) ;; # تحتوي بالفعل على نقطة
+        * ) CURRENT="${CURRENT}." ;; # إضافة النقطة
+      esac
       ;;
     [0-9])
       if [ "$CURRENT" = "0" ] || [ "$WAITING" -eq 1 ]; then

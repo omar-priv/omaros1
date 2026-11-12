@@ -1,5 +1,5 @@
 #!/bin/sh
-# Sadim OS — rcS v0.5: إطار الخدمات (مراحل 3-11)
+# Sadim OS — rcS v0.5: إطار الخدمات (مراحل 3-12)
 # تهيئة قابلة للكتابة + تشغيل /etc/init.d/S* بالترتيب (S05→S99)
 # يعمل على الجذر المدمج (squashfs+overlay) — أي خطأ يُطبع ولا يُخفى
 # ⚠️ أمان: يتم التشغيل كمستخدم sadim (uid 1000)، وليس root تلقائياً
@@ -9,7 +9,6 @@ export PATH=/bin:/sbin:/usr/bin:/usr/sbin
 mkdir -p /var/run /var/log /var/tmp /tmp
 chmod 1777 /tmp 2>/dev/null
 
-# تهيئة بيئة المستخدم اليومي (مستخدم عادي، ليس root)
 export HOME=/home/sadim
 export USER=sadim
 export LANG=ar_SA.UTF-8
@@ -17,7 +16,6 @@ export LC_ALL=ar_SA.UTF-8
 
 echo "[rcS] starting init.d services (Sadim OS v0.5)…"
 
-# عداد الأخطاء للخدمات الحرجة
 critical_failed=0
 services_started=0
 
@@ -28,7 +26,6 @@ for s in /etc/init.d/S*; do
     services_started=$((services_started + 1))
   else
     echo "[rcS] WARN: $s failed — continuing with next service"
-    # الخدمات الحرجة (الضرورية للإقلاع) تزيد العداد
     case "$s" in
       */S05-logging|*/S10-network|*/S20-seatd|*/S30-weston|*/S99-ci-end)
         critical_failed=$((critical_failed + 1))
@@ -39,19 +36,17 @@ done
 
 echo "[rcS] services started: $services_started, critical failures: $critical_failed"
 
-# إذا فشلت خدمات حرجة جداً، تحذير但 لا نتوقف (السماح بالتعافي اليدوي)
 if [ "$critical_failed" -gt 0 ]; then
   echo "[rcS] WARNING: $critical_failed critical service(s) failed — system may be unstable"
 fi
 
-# علامات الإنجاز للمراحل
-echo "SADIM-ROOTFS-OK"     # المرحلة 3: الجذر الحي والخدمات
-echo "SADIM-DRIVERS-OK"    # المرحلة 6: جميع التعريفات محملة تلقائياً (Wi-Fi/صوت/طاقة/USB/لمس/شاشة)
-echo "SADIM-HW-OK"         # المرحلة 6: تعريفات العتاد جاهزة للاستخدام
-echo "SADIM-PERF-OK"       # المرحلة 7: الأداء (zRAM/SMR/مراقبة)
-echo "SADIM-SHELL-OK"      # المرحلة 8: واجهة Windows 10-like (Taskbar + Start Menu)
-echo "SADIM-WIN10-OK"      # التخصيصات المطبقة (سمة + أداء + حماية SMR)
-echo "SADIM-ADMIN-OK"      # الصلاحيات: sadim مستخدم عادي مع sudo للإدارة
-echo "SADIM-BRAVE-OK"      # المتصفح: Brave Browser مثبت (أو جاري التثبيت)
-echo "SADIM-WINE-OK"       # الدعم: Wine لتشغيل تطبيقات .exe
+echo "SADIM-ROOTFS-OK"
+echo "SADIM-DRIVERS-OK"
+echo "SADIM-HW-OK"
+echo "SADIM-PERF-OK"
+echo "SADIM-SHELL-OK"
+echo "SADIM-WIN10-OK"
+echo "SADIM-ADMIN-OK"
+echo "SADIM-BRAVE-OK"
+echo "SADIM-WINE-OK"
 echo "[rcS] Sadim OS v0.2-daily ready — واجهة Windows 10-like نشطة للاستخدام اليومي"

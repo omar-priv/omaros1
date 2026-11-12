@@ -16,7 +16,7 @@ show_help() {
   echo "  ls, cd, pwd, mkdir, rm, cp, mv, touch, cat"
   echo "  ps, kill, top, free, df, du, uname"
   echo "  ip, ifconfig, ping, wget, curl"
-  echo "  modprobe, lsmon, dmesg"
+  echo "  modprobe, lsmod, dmesg"
   echo "  exit — إغلاق المحطة"
   echo ""
 }
@@ -37,7 +37,6 @@ while true; do
     "")
       ;;
     *)
-      # تنفيذ الأمر مباشرة
       $cmd $args 2>/dev/null || echo "أمر غير معروف: $cmd"
       ;;
   esac

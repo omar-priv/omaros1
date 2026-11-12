@@ -31,12 +31,18 @@ show_screen() {
   # قراءة تحميل المعالج
   local cpu_pct=0
   if [ -r /proc/stat ]; then
-    local line=$(head -1 /proc/stat)
-    local parts=($line)
-    local user=${parts[1]:-0}
-    local nice=${parts[2]:-0}
-    local system=${parts[3]:-0}
-    local idle=${parts[4]:-0}
+    local line
+    line=$(head -1 /proc/stat 2>/dev/null || echo "cpu 0 0 0 0")
+    # استخراج القيم بعد كلمة "cpu"
+    local user nice system idle
+    user=$(echo "$line" | awk '{print $2}')
+    nice=$(echo "$line" | awk '{print $3}')
+    system=$(echo "$line" | awk '{print $4}')
+    idle=$(echo "$line" | awk '{print $5}')
+    user=${user:-0}
+    nice=${nice:-0}
+    system=${system:-0}
+    idle=${idle:-0}
     local total=$((user + nice + system + idle))
     local active=$((user + nice + system))
     if [ "$total" -gt 0 ]; then

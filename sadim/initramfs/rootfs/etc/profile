@@ -1,3 +1,6 @@
+# Sadim OS — profile (ملف التعريف للمستخدم sadim)
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin
-export PS1='sadim:\w$ '
-umask 022
+export HOME=/home/sadim
+export USER=sadim
+export LANG=ar_SA.UTF-8
+export LC_ALL=ar_SA.UTF-8

@@ -1,0 +1,189 @@
+#!/bin/sh
+# Sadim OS — Network Settings (إعدادات الشبكة)
+# إدارة شبكات Wi-Fi والإيثرنت
+# شبيهة بـ Windows Network & Internet Settings
+
+set -e
+
+log() { echo "[network] $*"; }
+
+show_menu() {
+  clear
+  echo "================================================"
+  echo "   إعدادات الشبكة — Sadim OS"
+  echo "================================================"
+  echo ""
+  echo "  الاتصالات:"
+  echo "  ----------------"
+
+  # عرض حالة الواي فاي
+  if command -v iw >/dev/null 2>&1 || command -v iwlist >/dev/null 2>&1; then
+    local wifi_state="غير متاح"
+    if command -v iw >/dev/null 2>&1; then
+      wifi_state=$(iw dev 2>/dev/null | grep Interface | awk '{print $2}' | head -1)
+      if [ -z "$wifi_state" ]; then
+        wifi_state="لا توجد بطاقة لاسلكية"
+      fi
+    fi
+    echo "  1. 📶 Wi-Fi: $wifi_state"
+  else
+    echo "  1. 📶 Wi-Fi: أداة iw غير مثبتة"
+  fi
+
+  # عرض حالة الإيثرنت
+  if command -v ip >/dev/null 2>&1; then
+    local eth_state
+    eth_state=$(ip -o link show 2>/dev/null | grep -E 'eth|enp' | head -1 | awk -F': ' '{print $2}')
+    if [ -z "$eth_state" ]; then
+      eth_state="لا يوجد كابل إيثرنت موصول"
+    fi
+    echo "  2. 🔌 إيثرنت: $eth_state"
+  else
+    echo "  2. 🔌 إيثرنت: أداة ip غير مثبتة"
+  fi
+
+  echo ""
+  echo "  الإجراءات:"
+  echo "  ----------------"
+  echo "  s — مسح الشبكات اللاسلكية المتاحة"
+  echo "  c — الاتصال بشبكة Wi-Fi"
+  echo "  d — قطع الاتصال بـ Wi-Fi"
+  echo "  p — حالة الاتصال الحالية"
+  echo ""
+  echo "  0 — العودة"
+  echo ""
+  echo -n "  اختر الخيار: "
+}
+
+scan_wifi() {
+  echo ""
+  echo "مسح الشبكات اللاسلكية المتاحة…"
+  echo "================================"
+
+  if command -v iw >/dev/null 2>&1; then
+    # البحث عن بطاقة لاسلكية
+    local iface
+    iface=$(iw dev 2>/dev/null | grep Interface | awk '{print $2}' | head -1)
+    if [ -z "$iface" ]; then
+      echo "لا توجد بطاقة لاسلكية مكتشفة"
+      echo ""
+      echo "اضغط Enter للعودة…"
+      read
+      return
+    fi
+
+    # تشغيل البطاقة
+    ip link set "$iface" up 2>/dev/null || true
+
+    # مسح الشبكات
+    iw dev "$iface" scan 2>/dev/null | grep -E 'SSID|signal:' | head -20 | while read -r line; do
+      echo "  $line"
+    done
+  elif command -v iwlist >/dev/null 2>&1; then
+    local iface
+    iface=$(iwlist 2>/dev/null | grep -E 'Interface' | head -1 | awk '{print $1}' | tr -d ':')
+    if [ -z "$iface" ]; then
+      iface="wlan0"
+    fi
+    iwlist "$iface" scan 2>/dev/null | grep -E 'ESSID|Quality' | head -20 | while read -r line; do
+      echo "  $line"
+    done
+  else
+    echo "أداة مسح الشبكات غير مثبتة (iw أو iwlist)"
+  fi
+
+  echo ""
+  echo "للاتصال: sadim-wifi-manager [واجهة] connect [SSID] [كلمة المرور]"
+  echo ""
+  echo "اضغط Enter للعودة…"
+  read
+}
+
+connect_wifi() {
+  echo ""
+  echo "الاتصال بشبكة Wi-Fi"
+  echo "================================"
+  echo -n "اسم الشبكة (SSID): "
+  read ssid
+  if [ -z "$ssid" ]; then
+    echo "يجب تحديد اسم الشبكة"
+    sleep 1
+    return
+  fi
+
+  echo -n "كلمة المرور (إن وجدت): "
+  read -s password
+  echo ""
+
+  if command -v iw >/dev/null 2>&1; then
+    local iface
+    iface=$(iw dev 2>/dev/null | grep Interface | awk '{print $2}' | head -1)
+    if [ -z "$iface" ]; then
+      echo "لا توجد بطاقة لاسلكية"
+      sleep 1
+      return
+    fi
+    /usr/bin/sadim-wifi-manager "$iface" connect "$ssid" "$password"
+  else
+    /usr/bin/sadim-wifi-manager wlan0 connect "$ssid" "$password"
+  fi
+}
+
+disconnect_wifi() {
+  echo ""
+  echo "قطع الاتصال بـ Wi-Fi…"
+  echo "================================"
+
+  if command -v iw >/dev/null 2>&1; then
+    local iface
+    iface=$(iw dev 2>/dev/null | grep Interface | awk '{print $2}' | head -1)
+    if [ -z "$iface" ]; then
+      echo "لا توجد بطاقة لاسلكية"
+      sleep 1
+      return
+    fi
+    /usr/bin/sadim-wifi-manager "$iface" disconnect
+  else
+    /usr/bin/sadim-wifi-manager wlan0 disconnect
+  fi
+}
+
+show_status() {
+  echo ""
+  echo "حالة الاتصال الحالية"
+  echo "================================"
+
+  if command -v iw >/dev/null 2>&1; then
+    local iface
+    iface=$(iw dev 2>/dev/null | grep Interface | awk '{print $2}' | head -1)
+    if [ -z "$iface" ]; then
+      echo "لا توجد بطاقة لاسلكية مكتشفة"
+    else
+      /usr/bin/sadim-wifi-manager "$iface" status
+    fi
+  else
+    /usr/bin/sadim-wifi-manager wlan0 status
+  fi
+
+  echo ""
+  echo "اضغط Enter للعودة…"
+  read
+}
+
+# المعالجة الرئيسية
+main() {
+  while true; do
+    show_menu
+    read choice
+    case "$choice" in
+      s|S) scan_wifi ;;
+      c|C) connect_wifi ;;
+      d|D) disconnect_wifi ;;
+      p|P) show_status ;;
+      0) break ;;
+      *) echo "اختيار غير صحيح" ; sleep 1 ;;
+    esac
+  done
+}
+
+main "$@"

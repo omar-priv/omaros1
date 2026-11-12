@@ -1,22 +1,41 @@
 #!/bin/sh
-# شبكة سديم: DHCP حقيقي عبر udhcpc — العلامة فقط عند إيجار فعلي (لا تمويه)
-[ -r /proc/net/dev ] || { echo "[net] /proc/net/dev unreadable"; exit 0; }
+# Sadim OS — خدمة الشبكة: DHCP حقيقي عبر udhcpc
+# العلامة فقط عند إيجار فعلي (لا تمويه)
+set -u
 
-DEV=""
-for d in eth0 enp0s3 enp2s0; do
-  if grep -qs "^ *$d:" /proc/net/dev; then DEV="$d"; break; fi
-done
-if [ -z "$DEV" ]; then
-  echo "[net] no ethernet interface present (normal without hardware) — no marker"
-  exit 0
-fi
+log() { echo "[net] $*"; }
 
-echo "[net] dhcp request on $DEV…"
-if udhcpc -i "$DEV" -s /etc/udhcpc.script -q -n -t 4 -T 3 > /var/log/udhcpc.log 2>&1; then
-  echo "[net] DHCP lease acquired on $DEV"
-  ifconfig "$DEV" 2>/dev/null | grep -s 'inet addr'
-  echo "SADIM-NET-OK"
-else
-  echo "[net] WARN: no DHCP lease (no marker)"
-  tail -n 5 /var/log/udhcpc.log 2>/dev/null
-fi
+start_network() {
+  [ -r /proc/net/dev ] || { echo "[net] /proc/net/dev unreadable"; exit 0; }
+
+  DEV=""
+  for d in eth0 enp0s3 enp2s0; do
+    if grep -qs "^ *$d:" /proc/net/dev; then DEV="$d"; break; fi
+  done
+  if [ -z "$DEV" ]; then
+    echo "[net] no ethernet interface present (normal without hardware) — no marker"
+    exit 0
+  fi
+
+  echo "[net] dhcp request on $DEV…"
+  if udhcpc -i "$DEV" -s /etc/udhcpc.script -q -n -t 4 -T 3 > /var/log/udhcpc.log 2>&1; then
+    echo "[net] DHCP lease acquired on $DEV"
+    ifconfig "$DEV" 2>/dev/null | grep -s 'inet addr'
+    echo "SADIM-NET-OK"
+  else
+    echo "[net] WARN: no DHCP lease (no marker)"
+    tail -n 5 /var/log/udhcpc.log 2>/dev/null
+  fi
+}
+
+stop_network() {
+  log "إيقاف خدمة الشبكة"
+}
+
+case "$1" in
+  start) start_network ;;
+  stop)  stop_network ;;
+  restart) stop_network; sleep 1; start_network ;;
+  *) echo "Usage: $0 {start|stop|restart}"; exit 1 ;;
+esac
+exit 0

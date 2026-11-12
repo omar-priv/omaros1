@@ -1,7 +1,7 @@
 #!/bin/sh
-# Sadim OS — Settings (Windows 10 Style)
+# Sadim OS — Settings (الإعدادات)
 # تطبيق الإعدادات الشبيه بـ Windows Settings
-# يسمح بضبط اللغة، الوقت، الشاشة، الطاقة، والنظام
+# يسمح بضبط اللغة، الوقت، الشاشة، الطاقة، والشبكة
 
 set -e
 
@@ -19,6 +19,7 @@ show_menu() {
   echo "  4. 💾 التخزين (Storage)"
   echo "  5. 🌐 الشبكة (Network)"
   echo "  6. ℹ️ حول النظام (About)"
+  echo "  7. 🔍 البحث (Search)"
   echo ""
   echo "  0. ⬅️ العودة للقائمة الرئيسية"
   echo ""
@@ -104,7 +105,7 @@ power_battery() {
   echo ""
   echo "  وضع توفير الطاقة: مفعل (zRAM + noatime)"
   echo ""
-  echo -n "  اضغط Enter للعودة..."
+  echo -n "  اضغط Enter للعودة…"
   read
 }
 
@@ -120,7 +121,7 @@ storage() {
     echo "  أمر df غير متاح"
   fi
   echo ""
-  echo -n "  اضغط Enter للعودة..."
+  echo -n "  اضغط Enter للعودة…"
   read
 }
 
@@ -130,16 +131,7 @@ network() {
   echo "   الشبكة — Sadim OS"
   echo "================================================"
   echo ""
-  if command -v ip >/dev/null 2>&1; then
-    ip addr 2>/dev/null | head -20
-  elif command -v ifconfig >/dev/null 2>&1; then
-    ifconfig 2>/dev/null | head -20
-  else
-    echo "  أدوات الشبكة غير متاحة"
-  fi
-  echo ""
-  echo -n "  اضغط Enter للعودة..."
-  read
+  /usr/bin/sadim-network-settings
 }
 
 about() {
@@ -152,7 +144,7 @@ about() {
   echo "  الإصدار: 0.2-daily"
   echo "  النواة: $(uname -r 2>/dev/null || echo "6.12.117-sadim-phase4")"
   echo "  البنية: $(uname -m 2>/dev/null || echo "x86_64")"
-  echo "  المستخدم: sadim (Administrator)"
+  echo "  المستخدم: sadim (مستخدم يومي)"
   echo "  الصفحة الرئيسية: https://github.com/omar-priv/omaros1"
   echo ""
   echo "  المكونات:"
@@ -163,24 +155,29 @@ about() {
   echo "  - Wine (دعم تطبيقات .exe)"
   echo "  - Brave Browser"
   echo ""
-  echo -n "  اضغط Enter للعودة..."
+  echo -n "  اضغط Enter للعودة…"
   read
 }
 
-# حلقة البرنامج الرئيسي
-while true; do
-  show_menu
-  read choice
-  case "$choice" in
-    1) language_time ;;
-    2) display_settings ;;
-    3) power_battery ;;
-    4) storage ;;
-    5) network ;;
-    6) about ;;
-    0) break ;;
-    *) echo "اختيار غير صحيح"; sleep 1 ;;
-  esac
-done
+# المعالجة الرئيسية
+main() {
+  while true; do
+    show_menu
+    read choice
+    case "$choice" in
+      1) language_time ;;
+      2) display_settings ;;
+      3) power_battery ;;
+      4) storage ;;
+      5) network ;;
+      6) about ;;
+      7) /usr/bin/sadim-search ;;
+      0) break ;;
+      *) echo "اختيار غير صحيح"; sleep 1 ;;
+    esac
+  done
 
-echo "تم إغلاق الإعدادات."
+  echo "تم إغلاق الإعدادات."
+}
+
+main "$@"

@@ -10,7 +10,6 @@ LOG_FILE="/var/log/sadim-disk-health.log"
 
 log() { echo "[disk-health] $*"; echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG_FILE" 2>/dev/null || true; }
 
-# عرض المساعدة
 show_help() {
   echo "Sadim OS Disk Health Monitor — مراقبة صحة القرص SMR"
   echo ""
@@ -31,7 +30,6 @@ show_help() {
   echo "⚠️  ملاحظة: هذا القرص SMR — الكتابة المتكررة قد تبطئ الأداء"
 }
 
-# عرض معلومات القرص
 show_info() {
   local disk="$1"
   echo "معلومات القرص: $disk"
@@ -40,13 +38,11 @@ show_info() {
   if [ -b "$disk" ]; then
     echo "الجهاز موجود: نعم"
     echo ""
-    # حجم القرص
     if command -v blockdev >/dev/null 2>&1; then
       local size
       size=$(blockdev --getsize64 "$disk" 2>/dev/null || echo "غير متاح")
       echo "الحجم: $size بايت ($(( size / 1024 / 1024 / 1024 )) GB)"
     fi
-    # نوع القرص (دوران أو SSD)
     if [ -r "/sys/block/$(basename "$disk")/queue/rotational" ]; then
       local rotational
       rotational=$(cat "/sys/block/$(basename "$disk")/queue/rotational" 2>/dev/null || echo "غير متاح")
@@ -57,7 +53,6 @@ show_info() {
         echo "النوع: قرص الحالة الصلبة (SSD)"
       fi
     fi
-    # أقسام القرص
     if command -v lsblk >/dev/null 2>&1; then
       echo ""
       echo "الأقسام:"
@@ -72,7 +67,6 @@ show_info() {
   echo "للحصول على تفاصيل أكثر: sadim-disk-health $disk health"
 }
 
-# عرض صحة القرص (S.M.A.R.T)
 show_health() {
   local disk="$1"
   echo "صحة القرص: $disk"
@@ -83,7 +77,6 @@ show_health() {
     return 1
   fi
 
-  # محاولة قراءة معلومات S.M.A.R.T
   if command -v smartctl >/dev/null 2>&1; then
     echo "قراءة بيانات S.M.A.R.T…"
     smartctl -H "$disk" 2>/dev/null || echo "لا يمكن قراءة بيانات S.M.A.R.T (قد لا يدعمها القرص)"
@@ -99,7 +92,6 @@ show_health() {
   echo "  التوصية: فعّل noatime لتقليل كتابات وقت الوصول"
 }
 
-# اختبار أداء القراءة/الكتابة
 show_perf() {
   local disk="$1"
   echo "أداء القرص: $disk"
@@ -129,7 +121,6 @@ show_perf() {
   echo "  4. تجنب خدمات الفهرسة والبحث في القرص"
 }
 
-# مراقبة مستمرة
 monitor_disk() {
   local disk="$1"
   echo "مراقبة القرص: $disk (كل 5 ثوانٍ — اضغط Ctrl+C للإيقاف)"
@@ -159,7 +150,6 @@ monitor_disk() {
   done
 }
 
-# المعالجة الرئيسية
 main() {
   local disk="$1"
   local cmd="$2"

@@ -1,0 +1,88 @@
+#!/bin/sh
+# Sadim OS — System Info (معلومات النظام)
+# عرض معلومات مفصلة عن النظام والعتاد
+# شبيهة بـ Windows System Properties
+
+set -e
+
+log() { echo "[sys-info] $*"; }
+
+show_info() {
+  clear
+  echo "================================================"
+  echo "   معلومات النظام — Sadim OS"
+  echo "================================================"
+  echo ""
+  echo "  النظام:"
+  echo "  ----------------"
+  echo "    الاسم: Sadim OS (سديم)"
+  echo "    الإصدار: 0.2-daily"
+  echo "    النواة: $(uname -r 2>/dev/null || echo "غير متاح")"
+  echo "    البنية: $(uname -m 2>/dev/null || echo "غير متاح")"
+  echo "    تاريخ البناء: $(date '+%Y-%m-%d')"
+  echo ""
+  echo "  العتاد:"
+  echo "  ----------------"
+  echo "    المعالج: $(uname -p 2>/dev/null || echo "غير متاح")"
+  echo "    الأنوية: $(nproc 2>/dev/null || echo "غير متاح")"
+  echo ""
+  echo "  الذاكرة:"
+  echo "  ----------------"
+  if [ -r /proc/meminfo ]; then
+    local mem_total mem_available mem_used mem_pct
+    mem_total=$(grep '^MemTotal:' /proc/meminfo | awk '{print $2}')
+    mem_available=$(grep '^MemAvailable:' /proc/meminfo | awk '{print $2}')
+    if [ -n "$mem_total" ] && [ -n "$mem_available" ]; then
+      mem_used=$((mem_total - mem_available))
+      mem_pct=$(( mem_used * 100 / mem_total ))
+      echo "    الإجمالي: $((mem_total / 1024)) MB"
+      echo "    المتاح: $((mem_available / 1024)) MB"
+      echo "    المستخدمة: $((mem_used / 1024)) MB (${mem_pct}%)"
+    else
+      echo "    غير متاح"
+    fi
+  else
+    echo "    غير متاح"
+  fi
+  echo ""
+  echo "  التخزين:"
+  echo "  ----------------"
+  if command -v df >/dev/null 2>&1; then
+    df -h / 2>/dev/null | tail -1 | awk '{print "    الجذر (/): " $2 " إجمالي، " $4 " متاح، " $5 " مستخدم"}'
+  else
+    echo "    غير متاح"
+  fi
+  echo ""
+  echo "  الشبكة:"
+  echo "  ----------------"
+  if command -v ip >/dev/null 2>&1; then
+    ip addr show 2>/dev/null | grep -E 'inet ' | grep -v '127.0.0.1' | head -5 | while read -r line; do
+      echo "    $line"
+    done
+  else
+    echo "    غير متاح"
+  fi
+  echo ""
+  echo "  المكونات المثبتة:"
+  echo "  ----------------"
+  echo "    Weston (Wayland Compositor): مثبت"
+  echo "    Qt6 (linuxfb): مثبت"
+  echo "    Wine (دعم .exe): $(command -v wine >/dev/null 2>&1 && echo "مثبت" || echo "غير مثبت")"
+  echo "    Brave Browser: $([ -x /opt/brave/brave-browser ] && echo "مثبت" || echo "غير مثبت")"
+  echo "    zRAM: $([ -b /dev/zram0 ] && echo "مفعل" || echo "غير مفعل")"
+  echo ""
+  echo "  الدعم:"
+  echo "  ----------------"
+  echo "    المستودع: https://github.com/omar-priv/omaros1"
+  echo "    القضايا: https://github.com/omar-priv/omaros1/issues"
+  echo ""
+  echo "اضغط Enter للعودة…"
+  read
+}
+
+# المعالجة الرئيسية
+main() {
+  show_info
+}
+
+main "$@"

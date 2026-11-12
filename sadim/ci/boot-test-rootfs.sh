@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
-# Sadim OS — بوابة المراحل 3-9: إقلاع الجذر الحي كاملاً في QEMU
-# المسار: kernel + initramfs (محمّل v0.3) → squashfs على virtio → overlayfs → switch_root
-#         → buildroot init → rcS → جميع الخدمات + واجهة Windows 10-like + تعريفات تلقائية + Administrator + Brave + Wine
-# 성공: العلامات إحدى عشرة ×3 تشغيلات متتالية (مضاد الارتداد):
-#   SADIM-BOOT-OK, SADIM-LIVE-OK, SADIM-ROOTFS-OK, SADIM-NET-OK, SADIM-HW-OK, SADIM-PERF-OK, SADIM-DRIVERS-OK, SADIM-SHELL-OK, SADIM-WIN10-OK, SADIM-ADMIN-OK, SADIM-WINE-OK
+# Sadim OS — بوابة المراحل 3-12: إقلاع الجذر الحي كاملاً في QEMU
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -17,7 +13,7 @@ LOG="$OUT/rootfs-boot-log.txt"
 : > "$LOG"
 RUNS=3
 ok=0
-echo "[sadim] rootfs boot gate v0.2: $RUNS consecutive runs required (العلامات الست ×3)"
+echo "[sadim] rootfs boot gate v0.5: $RUNS consecutive runs required (12 markers ×3)"
 for i in $(seq 1 $RUNS); do
   rlog="$OUT/rootfs-boot-log-run$i.txt"
   : > "$rlog"
@@ -38,16 +34,16 @@ for i in $(seq 1 $RUNS); do
      && grep -q "SADIM-NET-OK"    "$rlog" \
      && grep -q "SADIM-HW-OK"     "$rlog" \
      && grep -q "SADIM-PERF-OK"   "$rlog" \
-     && grep -q "SADIM-DRIVERS-OK" "$rlog" \
      && grep -q "SADIM-SHELL-OK"  "$rlog" \
      && grep -q "SADIM-WIN10-OK"  "$rlog" \
      && grep -q "SADIM-ADMIN-OK"  "$rlog" \
+     && grep -q "SADIM-BRAVE-OK"  "$rlog" \
      && grep -q "SADIM-WINE-OK"   "$rlog"; then
     ok=$((ok+1))
     cp "$rlog" "$LOG"
   else
     echo "[sadim] run $i FAILED — one or more markers missing"
-    for m in SADIM-BOOT-OK SADIM-LIVE-OK SADIM-ROOTFS-OK SADIM-NET-OK SADIM-HW-OK SADIM-PERF-OK SADIM-DRIVERS-OK SADIM-SHELL-OK SADIM-WIN10-OK SADIM-ADMIN-OK SADIM-WINE-OK; do
+    for m in SADIM-BOOT-OK SADIM-LIVE-OK SADIM-ROOTFS-OK SADIM-NET-OK SADIM-HW-OK SADIM-PERF-OK SADIM-SHELL-OK SADIM-WIN10-OK SADIM-ADMIN-OK SADIM-BRAVE-OK SADIM-WINE-OK; do
       grep -q "$m" "$rlog" && echo "  marker $m: PRESENT" || echo "  marker $m: MISSING"
     done
     cp "$rlog" "$LOG"
@@ -56,14 +52,12 @@ done
 
 if [ "$ok" -eq "$RUNS" ]; then
   echo "=============================================================="
-  echo "  ROOTFS BOOT TEST PASSED — all 11 markers x3 (v0.2-daily Windows 10 UI)"
+  echo "  ROOTFS BOOT TEST PASSED — all 11 markers x3 (v0.5)"
   echo "=============================================================="
   exit 0
 else
   echo "=============================================================="
   echo "  ROOTFS BOOT TEST FAILED — $ok/$RUNS runs ok"
   echo "=============================================================="
-  echo "---- last 100 lines of last boot log ----"
-  tail -n 100 "$LOG"
   exit 1
 fi

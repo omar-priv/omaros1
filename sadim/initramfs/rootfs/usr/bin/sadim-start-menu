@@ -11,7 +11,7 @@ show_menu() {
   echo "   قائمة ابدأ — Sadim OS (Windows 10 Style)"
   echo "================================================"
   echo ""
-  echo "  المستخدم: sadim (Administrator)"
+  echo "  المستخدم: sadim (مستخدم يومي)"
   echo ""
   echo "  التطبيقات:"
   echo "  ----------------"
@@ -108,13 +108,21 @@ launch_app() {
     9)
       echo "إيقاف النظام..."
       sleep 1
-      poweroff 2>/dev/null || reboot -f 2>/dev/null || echo "لا يمكن إيقاف النظام"
+      if command -v sudo >/dev/null 2>&1; then
+        sudo poweroff 2>/dev/null || echo "لا يمكن إيقاف النظام — تأكد من صلاحيات sudo"
+      else
+        poweroff 2>/dev/null || echo "لا يمكن إيقاف النظام"
+      fi
       exit 0
       ;;
     0)
       echo "إعادة التشغيل..."
       sleep 1
-      reboot -f 2>/dev/null || echo "لا يمكن إعادة التشغيل"
+      if command -v sudo >/dev/null 2>&1; then
+        sudo reboot -f 2>/dev/null || echo "لا يمكن إعادة التشغيل — تأكد من صلاحيات sudo"
+      else
+        reboot -f 2>/dev/null || echo "لا يمكن إعادة التشغيل"
+      fi
       exit 0
       ;;
     *)

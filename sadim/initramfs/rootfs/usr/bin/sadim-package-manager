@@ -11,7 +11,6 @@ REPO_URL="https://github.com/omar-priv/omaros1/releases/latest/download/"
 
 log() { echo "[pkg-mgr] $*"; }
 
-# عرض المساعدة
 show_help() {
   echo "Sadim OS Package Manager — مدير الحزم البسيط"
   echo ""
@@ -33,7 +32,6 @@ show_help() {
   echo "⚠️  تحذير: تثبيت حزم من مصادر غير موثوقة قد يشكل خطراً أمنياً"
 }
 
-# عرض الحزم المثبتة
 list_packages() {
   echo "الحزم المثبتة في نظام سديم OS:"
   echo "================================"
@@ -53,9 +51,18 @@ list_packages() {
   echo "  sadim-browser         — متصفح الويب"
   echo "  sadim-taskbar         — شريط المهام"
   echo "  sadim-start-menu      — قائمة ابدأ"
+  echo "  sadim-search          — بحث النظام"
+  echo "  sadim-system-info     — معلومات النظام"
+  echo "  sadim-help            — مساعدة النظام"
+  echo "  sadim-network-settings — إعدادات الشبكة"
+  echo "  sadim-power-monitor   — مراقبة الطاقة"
+  echo "  sadim-disk-health     — مراقبة القرص"
+  echo "  sadim-wifi-manager    — إدارة Wi-Fi"
+  echo "  sadim-wine            — تشغيل تطبيقات .exe"
+  echo "  sadim-system-update   — تحديث النظام"
+  echo "  sadim-lock-screen     — شاشة القفل"
 }
 
-# تثبيت حزمة
 install_package() {
   local pkg_name="$1"
   if [ -z "$pkg_name" ]; then
@@ -66,19 +73,16 @@ install_package() {
 
   log "بدء تثبيت الحزمة: $pkg_name"
 
-  # التحقق من الأدوات المطلوبة
   if ! command -v wget >/dev/null 2>&1; then
     log "ERROR: wget غير مثبت"
     return 1
   fi
 
-  # التحقق من أن الحزمة غير مثبتة مسبقاً
   if [ -f "$INSTALLED_FLAG" ] && grep -qx "$pkg_name" "$INSTALLED_FLAG" 2>/dev/null; then
     log "الحزمة $pkg_name مثبتة مسبقاً"
     return 0
   fi
 
-  # تحميل الحزمة
   local pkg_url="${REPO_URL}${pkg_name}.tar.gz"
   log "تحميل من: $pkg_url"
   if ! wget -q -O "/tmp/${pkg_name}.tar.gz" "$pkg_url" 2>/dev/null; then
@@ -87,7 +91,6 @@ install_package() {
     return 1
   fi
 
-  # استخراج الحزمة
   mkdir -p "$PKG_DIR"
   if ! tar xzf "/tmp/${pkg_name}.tar.gz" -C "$PKG_DIR" 2>/dev/null; then
     log "ERROR: تعذر استخراج الحزمة $pkg_name"
@@ -95,14 +98,12 @@ install_package() {
     return 1
   fi
 
-  # تسجيل الحزمة كمثبتة
   echo "$pkg_name" >> "$INSTALLED_FLAG"
   rm -f "/tmp/${pkg_name}.tar.gz"
 
   log "تم تثبيت الحزمة: $pkg_name بنجاح"
 }
 
-# إزالة حزمة
 remove_package() {
   local pkg_name="$1"
   if [ -z "$pkg_name" ]; then
@@ -113,26 +114,21 @@ remove_package() {
 
   log "إزالة الحزمة: $pkg_name"
 
-  # إزالة من قائمة المثبتات
   if [ -f "$INSTALLED_FLAG" ]; then
     sed -i "/^${pkg_name}$/d" "$INSTALLED_FLAG" 2>/dev/null || true
   fi
 
-  # إزالة ملفات الحزمة
   rm -rf "$PKG_DIR/$pkg_name" 2>/dev/null || true
 
   log "تم إزالة الحزمة: $pkg_name"
 }
 
-# تحديث جميع الحزم
 update_packages() {
   log "التحقق من التحديثات المتاحة…"
-  # في هذا الإصدار، التحديثات تتم عبر إعادة بناء النظام ونشر إصدار جديد
   log "تحديث الحزم يتم عبر إصدار جديد من نظام سديم OS"
   log "للتحديث: نزّل أحدث إصدار من GitHub Releases وأعد الإقلاع"
 }
 
-# البحث في الحزم
 search_packages() {
   local query="$1"
   echo "البحث في الحزم المتاحة: $query"
@@ -145,7 +141,6 @@ search_packages() {
   echo "للInstall: sadim-package-manager install <اسم الحزمة>"
 }
 
-# معلومات حول حزمة
 package_info() {
   local pkg_name="$1"
   if [ -z "$pkg_name" ]; then
@@ -166,7 +161,6 @@ package_info() {
   echo "المصدر: https://github.com/omar-priv/omaros1/releases"
 }
 
-# المعالجة الرئيسية
 main() {
   local cmd="$1"
   shift

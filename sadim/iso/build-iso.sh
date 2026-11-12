@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 # Sadim OS — بناء Live ISO v0.2-daily قابل للإقلاع BIOS (CD + USB هجين)
-# مسار الإقلاع: isolinux → kernel + initramfs v0.3 → live/rootfs.squashfs (iso9660+loop)
-#         → overlayfs → switch_root → جذر Buildroot حي + خدمات + DHCP + تحسينات SMR
-# لا يلمس أي قرص داخلي — مجرد بناء صورة للاستخدام اليومي من USB 2.0
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -21,7 +18,6 @@ cp "$OUT/bzImage" "$ISODIR/boot/vmlinuz-sadim"
 cp "$OUT/initramfs.cpio.gz" "$ISODIR/boot/initramfs-sadim.img"
 cp "$OUT/rootfs.squashfs" "$ISODIR/live/rootfs.squashfs"
 
-# ملف إصدار système
 cat > "$ISODIR/sadim/VERSION" <<'EOF'
 Sadim OS 0.2-daily
 Build: $(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -30,7 +26,6 @@ Target: Acer E5-576G (i5-7200U, 4GB RAM, SMR HDD)
 USB: USB 2.0 متوافق
 EOF
 
-# إعداد isolinux.cfg مع خيارات إقلاع متعددة
 cat > "$ISODIR/isolinux/isolinux.cfg" <<'EOF'
 DEFAULT sadim
 PROMPT 1
@@ -46,7 +41,6 @@ LABEL memtest
   APPEND initrd=/boot/initramfs-sadim.img console=tty0 console=ttyS0,115200 panic=-1 memtest SADIM_CI=0
 EOF
 
-# ملفات محمل الإقلاع من حزم CI الرسمية
 ISOLINUX_DIR="/usr/lib/ISOLINUX"
 SYSLINUX_MODULES="/usr/lib/syslinux/modules/bios"
 [ -f "$ISOLINUX_DIR/isolinux.bin" ] || { echo "FAIL: isolinux.bin missing (apt install isolinux)"; exit 1; }
@@ -55,7 +49,6 @@ SYSLINUX_MODULES="/usr/lib/syslinux/modules/bios"
 cp "$ISOLINUX_DIR/isolinux.bin" "$ISODIR/isolinux/"
 cp "$SYSLINUX_MODULES/ldlinux.c32" "$ISODIR/isolinux/"
 
-# بناء صورة ISO هجينة (تقلع من CD و USB 2.0)
 xorriso -as mkisofs \
   -o "$OUT/sadim.iso" \
   -isohybrid-mbr "$ISOLINUX_DIR/isohdpfx.bin" \
@@ -67,7 +60,6 @@ xorriso -as mkisofs \
   -P "Sadim OS Project" \
   "$ISODIR"
 
-# جعل الصورة قابلة للإقلاع من USB (isohybrid)
 if command -v isohybrid >/dev/null 2>&1; then
   isohybrid "$OUT/sadim.iso" 2>/dev/null || true
 fi

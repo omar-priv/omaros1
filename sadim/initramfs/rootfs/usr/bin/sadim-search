@@ -1,0 +1,70 @@
+#!/bin/sh
+# Sadim OS — Search (بحث النظام)
+# أداة بحث عن الملفات والتطبيقات والإعدادات
+# شبيهة بـ Windows Search
+
+set -e
+
+QUERY="${1:-}"
+SEARCH_DIRS="${SEARCH_DIRS:-/home/sadim /usr/bin /etc /opt}"
+
+log() { echo "[search] $*"; }
+
+show_help() {
+  echo "Sadim OS Search — بحث النظام"
+  echo ""
+  echo "الاستخدام: sadim-search [كلمة البحث]"
+  echo ""
+  echo "أمثلة:"
+  echo "  sadim-search مستكشف"
+  echo "  sadim-search notepad"
+  echo "  sadim-search Wi-Fi"
+  echo ""
+  echo "البحث في:"
+  echo "  /home/sadim   — ملفات المستخدم"
+  echo "  /usr/bin      — التطبيقات المثبتة"
+  echo "  /etc          — إعدادات النظام"
+  echo "  /opt          — البرامج الإضافية"
+}
+
+search_files() {
+  local query="$1"
+  local found=0
+
+  echo "نتائج البحث عن: '$query'"
+  echo "================================"
+
+  # البحث في الملفات
+  for dir in $SEARCH_DIRS; do
+    if [ -d "$dir" ]; then
+      find "$dir" -maxdepth 3 -iname "*$query*" 2>/dev/null | head -20 | while read -r file; do
+        if [ -d "$file" ]; then
+          echo "  📁 $file  (مجلد)"
+        else
+          echo "  📄 $file  (ملف)"
+        fi
+        found=1
+      done
+    fi
+  done
+
+  if [ "$found" -eq 0 ]; then
+    echo "  (لا توجد نتائج)"
+  fi
+
+  echo ""
+  echo "لفتح ملف: sadim-file-explorer [مسار الملف]"
+  echo "لتشغيل تطبيق: sadim-start-menu"
+}
+
+# المعالجة الرئيسية
+main() {
+  if [ -z "$QUERY" ]; then
+    show_help
+    exit 0
+  fi
+
+  search_files "$QUERY"
+}
+
+main "$@"

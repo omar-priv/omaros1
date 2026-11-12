@@ -1,5 +1,5 @@
 #!/bin/sh
-# سكربت أحداث udhcpc (سديم) — يكبس الإيجار في النظام فعلياً
+# Sadim OS — سكربت أحداث udhcpc
 [ -n "$1" ] || exit 0
 case "$1" in
   deconfig)

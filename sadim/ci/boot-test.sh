@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 # Sadim OS — اختبار الإقلاع في QEMU (المرحلة 2)
-# بوابة النجاح: ظهور SADIM-BOOT-OK في اللوج قبل المهلة، دون Kernel Panic.
-# QEMU يعمل بTCG (بلا KVM على الرنر) — إقلاع نواة مينية يستغرق ثوانٍ.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -14,7 +12,7 @@ LOG="$OUT/boot-log.txt"
 : > "$LOG"
 RUNS=3
 ok=0
-echo "[sadim] boot gate: $RUNS consecutive runs required (anti-flakiness)"
+echo "[sadim] boot gate v0.5: $RUNS consecutive runs required (anti-flakiness)"
 for i in $(seq 1 $RUNS); do
   rlog="$OUT/boot-log-run$i.txt"
   : > "$rlog"
@@ -47,7 +45,5 @@ else
   echo "=========================================="
   echo "  BOOT TEST FAILED — marker not reached"
   echo "=========================================="
-  echo "---- last 80 lines of boot log ----"
-  tail -n 80 "$LOG"
   exit 1
 fi

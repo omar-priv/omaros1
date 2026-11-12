@@ -3,7 +3,7 @@
 #
 # تنسيق: <file system> <mount point> <type> <options> <dump> <pass>
 
-# الجذر —読み seule في Live (squashfs)، قابل للكتابة عبر overlay في الذاكرة
+# الجذر — 읽기 seule في Live (squashfs)، قابل للكتابة عبر overlay في الذاكرة
 overlay         /               overlay   defaults,noatime,nodiratime     0 0
 
 # ملفات مؤقتة في RAM (لا تلمس الهارد SMR)

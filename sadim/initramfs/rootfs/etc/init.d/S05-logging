@@ -1,7 +1,27 @@
 #!/bin/sh
-# سجل إقلاع فعلي — يُكتب على الجذر القابل للكتابة (overlay) في /var/log
-{
-  echo "[boot] $(date -u '+%Y-%m-%dT%H:%M:%SZ') kernel=$(uname -r)"
-  grep -s '^MemTotal:' /proc/meminfo
-} >> /var/log/boot.log 2>/dev/null
-dmesg >> /var/log/dmesg.log 2>/dev/null
+# Sadim OS — خدمة السجلات (المرحلة 3)
+# يسجل إقلاع النظام على الجذر القابل للكتابة (overlay) في /var/log
+set -u
+
+log() { echo "[logging] $*"; }
+
+start_logging() {
+  {
+    echo "[boot] $(date -u '+%Y-%m-%dT%H:%M:%SZ') kernel=$(uname -r)"
+    grep -s '^MemTotal:' /proc/meminfo
+  } >> /var/log/boot.log 2>/dev/null
+  dmesg >> /var/log/dmesg.log 2>/dev/null
+  log "تم تسجيل معلومات الإقلاع"
+}
+
+stop_logging() {
+  log "خدمة السجلات لا تحتاج إيقاف"
+}
+
+case "$1" in
+  start) start_logging ;;
+  stop)  stop_logging ;;
+  restart) stop_logging; sleep 1; start_logging ;;
+  *) echo "Usage: $0 {start|stop|restart}"; exit 1 ;;
+esac
+exit 0

@@ -27,13 +27,16 @@ show_screen() {
   echo ""
   echo "  المسار الحالي: $CURRENT_DIR"
   echo ""
-  echo "  contenu المجلد:"
+  echo "  محتوى المجلد:"
   echo "  ----------------"
 
   # عرض المجلدات أولاً ثم الملفات
   local count=1
+  local has_items=0
   for item in "$CURRENT_DIR"/*; do
+    # التحقق من وجود ملفات فعلية (تجنب مشكلة globbing عندما يكون المجلد فارغاً)
     [ -e "$item" ] || continue
+    has_items=1
     local name=$(basename "$item")
     if [ -d "$item" ]; then
       echo "  [$count] 📁 $name  (مجلد)"
@@ -44,7 +47,7 @@ show_screen() {
     count=$((count + 1))
   done
 
-  if [ "$count" -eq 1 ]; then
+  if [ "$has_items" -eq 0 ]; then
     echo "  (المجلد فارغ)"
   fi
 
@@ -106,13 +109,19 @@ process_command() {
       read item_num
       local item=$(get_item_by_number "$item_num")
       if [ -n "$item" ]; then
-        echo -n "تأكيد حذف $item؟ (y/n): "
-        read confirm
-        if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
-          rm -rf "$CURRENT_DIR/$item" 2>/dev/null && \
-            echo "تم الحذف: $item" || echo "فشل الحذف"
-          sleep 1
-        fi
+        # حماية من حذف الجذر أو مسارات النظام الحساسة
+        case "$item" in
+          ..|.*|/*) echo "لا يمكن حذف هذا العنصر لأسباب أمنية" ; sleep 1 ;;
+          *)
+            echo -n "تأكيد حذف $item؟ (y/n): "
+            read confirm
+            if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
+              rm -rf "$CURRENT_DIR/$item" 2>/dev/null && \
+                echo "تم الحذف: $item" || echo "فشل الحذف"
+              sleep 1
+            fi
+            ;;
+        esac
       fi
       ;;
     r|R)

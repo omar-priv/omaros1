@@ -1,5 +1,5 @@
 #!/bin/sh
-# Sadim OS — init v0.3 (محمّل live: initramfs → squashfs+overlayfs → جذر مدمج)
+# Sadim OS — init v0.5 (محمّل live: initramfs → squashfs+overlayfs → جذر مدمج)
 # - SADIM-BOOT-OK: وصول النظام إلى init (بوابة المرحلة 2 — ثابتة لا تتغير)
 # - مسار live rootfs: squashfs على vda (CI) أو sr0/sda (ISO حقيقي) → overlayfs → switch_root
 #   إلى جذر البناء (Buildroot) — النظام الحي قابل للكتابة عبر tmpfs
@@ -15,7 +15,7 @@ hostname sadim 2>/dev/null
 
 echo ""
 echo "=================================================="
-echo "   Sadim OS (سديم) — live boot v0.3"
+echo "   Sadim OS (سديم) — live boot v0.5"
 echo "=================================================="
 echo "kernel : $(uname -r)"
 echo "uptime : $(cut -d ' ' -f1 /proc/uptime) s"
@@ -33,11 +33,9 @@ LIVE_ROOT=""
 mkdir -p "$RO"
 for cand in /dev/vda /dev/sr0 /dev/sda /dev/sdb /dev/sda1 /dev/sdb1; do
   [ -b "$cand" ] || continue
-  # مسار CI/قرص: squashfs خام على الجهاز كله
   if mount -o ro -t squashfs "$cand" "$RO" 2>/dev/null; then
     LIVE_ROOT="squashfs:$cand"; break
   fi
-  # مسار CD حقيقي: iso9660 يحمل الملف live/rootfs.squashfs → loop mount
   if mount -o ro -t iso9660 "$cand" "$RO" 2>/dev/null; then
     if [ -f "$RO/live/rootfs.squashfs" ]; then
       mkdir -p /mnt/sq
@@ -64,7 +62,6 @@ if [ -n "$LIVE_ROOT" ]; then
     exec sh
   fi
   echo "SADIM-LIVE-OK"
-  # نقل الجبلات الافتراضية إلى الجذر الجديد (مع بدائل احتياطية آمنة)
   if ! mount -o move /proc "$NEW/proc" 2>/dev/null; then
     mkdir -p "$NEW/proc"; mount -t proc proc "$NEW/proc"
   fi

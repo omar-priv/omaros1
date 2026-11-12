@@ -1,7 +1,7 @@
 #!/bin/sh
-# Sadim OS — System Update (أداة تحديث النظام)
+# Sadim OS — System Update (تحديث النظام)
 # التحقق من التحديثات وتطبيقها على نظام سديم OS
-# لا أدوات خارجية — الأوامر اليدوية فقط
+# شبيهة بـ Windows Update
 
 set -e
 
@@ -11,7 +11,6 @@ UPDATE_FLAG="/var/lib/sadim-update-checked"
 
 log() { echo "[sys-update] $*"; }
 
-# عرض المساعدة
 show_help() {
   echo "Sadim OS System Update — أداة تحديث النظام"
   echo ""
@@ -24,18 +23,16 @@ show_help() {
   echo "  help      — عرض هذه المساعدة"
   echo ""
   echo "⚠️  تحذير: تحديث النظام يتطلب إعادة الإقلاع وتطبيق التغييرات"
+  echo "  جميع التغييرات في الذاكرة (RAM) ستضيع عند إعادة التشغيل"
 }
 
-# التحقق من الإصدار الحالي
 show_current_version() {
   echo "الإصدار الحالي: $CURRENT_VERSION"
   echo "النواة: $(uname -r 2>/dev/null || echo "غير متاح")"
   echo "البنية: $(uname -m 2>/dev/null || echo "غير متاح")"
   echo ""
-  echo "للتحقق من التحديثات: sadim-system-update check"
 }
 
-# التحقق من التحديثات
 check_updates() {
   log "التحقق من التحديثات المتاحة…"
 
@@ -52,7 +49,7 @@ check_updates() {
     return 1
   fi
 
-  # استخراج رقم الإصدار (بسيط بدون jq)
+  # استخراج رقم الإصدار
   local latest_version
   latest_version=$(grep -o '"tag_name": *"[^"]*"' /tmp/sadim-release-info.json 2>/dev/null | head -1 | sed 's/"tag_name": *"//;s/"//')
   if [ -z "$latest_version" ]; then
@@ -63,7 +60,6 @@ check_updates() {
   echo "أحدث إصدار متاح: $latest_version"
   echo ""
 
-  # مقارنة الإصدارات (بسيطة)
   if [ "$latest_version" != "$CURRENT_VERSION" ] && [ "$latest_version" != "غير محدد" ]; then
     log "يوجد تحديث متاح: $latest_version"
     log "للتثبيت: sadim-system-update install"
@@ -76,11 +72,9 @@ check_updates() {
   fi
 }
 
-# تثبيت التحديث
 install_update() {
   log "بدء عملية تحديث النظام…"
 
-  # التحقق من وجود تحديث متاح
   if [ ! -f "$UPDATE_FLAG" ]; then
     log "لا توجد تحديثات مؤكدة للتثبيت"
     log "قم بالتحقق أولاً: sadim-system-update check"
@@ -93,7 +87,7 @@ install_update() {
   echo "  1. تحميل أحدث إصدار من نظام سديم OS"
   echo "  2. استبدال ملفات النظام الحالية"
   echo "  3. يتطلب إعادة الإقلاع لتطبيق التغييرات"
-  echo "  4. 모든 التغييرات في الذاكرة (RAM) ستضيع عند إعادة الإقلاع"
+  echo "  4. جميع التغييرات في الذاكرة (RAM) ستضيع عند إعادة التشغيل"
   echo ""
   echo -n  "  هل تريد المتابعة؟ (y/n): "
   read confirm
@@ -118,13 +112,11 @@ install_update() {
 
   log "تم تحميل التحديث في: /tmp/sadim-update.iso"
   log "للتطبيق: اكتب الصورة على فلاشة USB وأعد الإقلاع منها"
-  log "أو انسخ الملفات يدوياً إلى قسم النظام"
   echo ""
   echo "ملف التحديث جاهز: /tmp/sadim-update.iso"
   echo "أعد الإقلاع من الفلاشة لتطبيق التحديث."
 }
 
-# حالة التحديثات
 show_status() {
   echo "حالة تحديثات نظام سديم OS:"
   echo "================================"

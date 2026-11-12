@@ -14,12 +14,10 @@ log() { echo "[win10-shell] $*" | tee -a "$LOG_FILE" 2>/dev/null || echo "[win10
 start_shell() {
   log "بدء واجهة Windows 10-like لنظام سديم OS…"
 
-  # 1. تطبيق تخصيصات Windows 10 (theme, performance, SMR protection, admin, wine)
   if [ -x /etc/sadim/windows10-tweaks.sh ]; then
     /etc/sadim/windows10-tweaks.sh start
   fi
 
-  # 2. انتظار Weston socket (حتى 15 ثانية)
   log "انتظار bereit Weston compositor…"
   for i in $(seq 1 30); do
     if [ -S /run/user/0/wayland-0 ] || [ -S /run/user/1000/wayland-0 ]; then
@@ -29,13 +27,11 @@ start_shell() {
     sleep 0.5
   done
 
-  # 3. تشغيل شريط المهام (Taskbar) في الخلفية
   if [ -x /usr/bin/sadim-taskbar ]; then
     log "تشغيل شريط المهام (Taskbar)…"
     /usr/bin/sadim-taskbar &
     TASKBAR_PID=$!
     echo "$TASKBAR_PID" > "$PIDFILE_TASKBAR"
-    # التحقق من أن العملية بدأت بنجاح
     sleep 1
     if kill -0 "$TASKBAR_PID" 2>/dev/null; then
       log "تم تشغيل شريط المهام (PID: $TASKBAR_PID)"
@@ -47,16 +43,11 @@ start_shell() {
     log "WARN: sadim-taskbar غير موجود — شريط المهام غير متاح"
   fi
 
-  # 4. قائمة ابدأ (Start Menu) تُفتح عند النقر على زر Start في شريط المهام
-  # لا تُشغل في الخلفية — تُفتح عند الحاجة
   if [ -x /usr/bin/sadim-start-menu ]; then
     log "قائمة ابدأ (Start Menu) جاهزة للفتح عبر شريط المهام"
   else
     log "WARN: sadim-start-menu غير موجود — قائمة ابدأ غير متاحة"
   fi
-
-  # 5. تشغيل تطبيقات افتراضية اختيارية (يمكن للمستخدم إضافتها لاحقاً)
-  # لا نفتح تطبيقات تلقائياً للحفاظ على الأداء (مثل Windows 10 Clean Install)
 
   log "تم بدء واجهة Windows 10-like بنجاح"
   echo "SADIM-SHELL-OK"

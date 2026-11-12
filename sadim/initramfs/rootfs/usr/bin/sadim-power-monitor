@@ -9,7 +9,6 @@ LOG_FILE="/var/log/sadim-power.log"
 
 log() { echo "[power-mgr] $*"; echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG_FILE" 2>/dev/null || true; }
 
-# عرض المساعدة
 show_help() {
   echo "Sadim OS Power Monitor — مراقبة الطاقة والبطارية"
   echo ""
@@ -25,12 +24,10 @@ show_help() {
   echo "⚠️  ملاحظة: بطارية الجهاز بصحة ≈60% — وقت تشغيل محدود"
 }
 
-# عرض حالة الطاقة
 show_status() {
   echo "حالة الطاقة والبطارية — نظام سديم OS"
   echo "================================"
 
-  # حالة محول الطاقة
   if [ -d /sys/class/power_supply ]; then
     echo "محولات الطاقة والبطاريات:"
     for ps in /sys/class/power_supply/*; do
@@ -55,7 +52,7 @@ show_status() {
 
       if [ -r "$ps/status" ]; then
         local status=$(cat "$ps/status" 2>/dev/null)
-        echo "    स्थिति: $status"
+        echo "    الحالة: $status"
       fi
       echo ""
     done
@@ -63,7 +60,6 @@ show_status() {
     echo "لا توجد معلومات عن الطاقة والبطارية"
   fi
 
-  # الوقت المتوقع للتشغيل (تقديري)
   if [ -r /sys/class/power_supply/BAT*/capacity ] 2>/dev/null; then
     local capacity
     capacity=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -1)
@@ -76,7 +72,6 @@ show_status() {
   echo ""
 }
 
-# عرض صحة البطارية التفصيلية
 show_health() {
   echo "صحة البطارية التفصيلية"
   echo "================================"
@@ -88,7 +83,6 @@ show_health() {
       echo "البطارية: $name"
       echo "  ----------------"
 
-      # السعة التصميمية vs الحالية
       if [ -r "$bat/energy_full_design" ] && [ -r "$bat/energy_full" ]; then
         local design=$(cat "$bat/energy_full_design" 2>/dev/null)
         local full=$(cat "$bat/energy_full" 2>/dev/null)
@@ -101,13 +95,11 @@ show_health() {
         fi
       fi
 
-      # رقم الدورة (إن وجد)
       if [ -r "$bat/cycle_count" ]; then
         local cycles=$(cat "$bat/cycle_count" 2>/dev/null)
         echo "  دورات الشحن: $cycles"
       fi
 
-      # الجهد والتيار
       if [ -r "$bat/voltage_now" ]; then
         local voltage=$(cat "$bat/voltage_now" 2>/dev/null)
         echo "  الجهد: $voltage ميكرو فولت"
@@ -123,7 +115,6 @@ show_health() {
   echo "  التوصية: استخدم وضع توفير الطاقة (zRAM مفعّل افتراضياً)"
 }
 
-# عرض درجة الحرارة
 show_temp() {
   echo "درجة حرارة النظام"
   echo "================================"
@@ -149,7 +140,6 @@ show_temp() {
   echo ""
 }
 
-# مراقبة مستمرة
 monitor_power() {
   echo "مراقبة الطاقة والبطارية (كل 10 ثوانٍ — اضغط Ctrl+C للإيقاف)"
   echo "================================"
@@ -159,14 +149,12 @@ monitor_power() {
     echo "مراقبة الطاقة — $(date '+%H:%M:%S')"
     echo ""
 
-    # الشحنة الحالية
     if [ -r /sys/class/power_supply/BAT*/capacity ] 2>/dev/null; then
       local capacity
       capacity=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -1)
       echo "الشحنة: $capacity%"
     fi
 
-    # حالة الاتصال
     if [ -r /sys/class/power_supply/AC*/online ] 2>/dev/null || [ -r /sys/class/power_supply/ADP*/online ] 2>/dev/null; then
       local online
       online=$(cat /sys/class/power_supply/AC*/online /sys/class/power_supply/ADP*/online 2>/dev/null | head -1)
@@ -177,14 +165,12 @@ monitor_power() {
       fi
     fi
 
-    # درجة الحرارة
     if [ -r /sys/class/thermal/thermal_zone0/temp ] 2>/dev/null; then
       local temp
       temp=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)
       echo "درجة الحرارة: $(( temp / 1000 ))°C"
     fi
 
-    # استخدام الذاكرة
     if [ -r /proc/meminfo ]; then
       local mem_total mem_available mem_used mem_pct
       mem_total=$(grep '^MemTotal:' /proc/meminfo | awk '{print $2}')
@@ -202,7 +188,6 @@ monitor_power() {
   done
 }
 
-# المعالجة الرئيسية
 main() {
   local cmd="$1"
 
