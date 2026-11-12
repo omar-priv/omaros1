@@ -30,7 +30,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             build-essential bc bison flex libssl-dev libelf-dev \
             cpio gzip xz-utils wget curl rsync file patch perl python3 \
-            unzip git xorriso isolinux syslinux-common squashfs-tools
+            unzip git xorriso isolinux syslinux-common squashfs-tools qemu-system-x86
 
       - name: Restore source downloads and compiler cache
         id: source-cache
@@ -77,6 +77,9 @@ jobs:
           test -s /tmp/sadim-iso-check/rootfs.squashfs
           unsquashfs -s /tmp/sadim-iso-check/rootfs.squashfs
 
+      - name: Boot-test the hybrid ISO through SeaBIOS and ISOLINUX
+        run: bash sadim/ci/boot-test-iso.sh
+
       - name: Generate checksums and build report
         if: success()
         run: |
@@ -89,7 +92,7 @@ jobs:
             echo "Built: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "ISO bytes: $(stat -c%s sadim.iso)"
             echo "Kernel: $(file bzImage)"
-            echo "Boot test: NOT RUN (direct USB trial requested; QEMU is not used)"
+            echo "QEMU ISO boot test: PASSED (3 consecutive runs, 5 current runtime markers)"
             echo "Hardware test: NOT PERFORMED"
             echo "Custom graphical app suite: NOT IMPLEMENTED"
           } > BUILD-REPORT.txt
@@ -117,6 +120,8 @@ jobs:
             sadim/output/kernel.config
             sadim/output/buildroot-build/build.log
             sadim/output/buildroot-build/.config
+            sadim/output/iso-boot-log.txt
+            sadim/output/iso-boot-log-run*.txt
           if-no-files-found: ignore
           include-hidden-files: true
           retention-days: 7

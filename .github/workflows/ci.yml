@@ -84,6 +84,13 @@ jobs:
           grep -q '^CONFIG_NETDEVICES=y$' sadim/kernel/fragments/qemu-minimal.config
           grep -q '^CONFIG_WLAN=y$' sadim/kernel/fragments/qemu-minimal.config
           grep -q '^CONFIG_SOUND=y$' sadim/kernel/fragments/qemu-minimal.config
+          grep -q '^CONFIG_VIRTIO=y$' sadim/kernel/fragments/qemu-minimal.config
+          grep -q '^CONFIG_VIRTIO_PCI=y$' sadim/kernel/fragments/qemu-minimal.config
+          grep -q '^CONFIG_VIRTIO_BLK=y$' sadim/kernel/fragments/qemu-minimal.config
+          grep -q '^CONFIG_VIRTIO_NET=y$' sadim/kernel/fragments/qemu-minimal.config
+          grep -q '^CONFIG_DRM_VIRTIO_GPU=y$' sadim/kernel/fragments/qemu-minimal.config
+          grep -Fq 'SADIM-BOOT-OK SADIM-LIVE-OK SADIM-ROOTFS-OK SADIM-NET-OK SADIM-GUI-OK' sadim/ci/boot-test-iso.sh
+          ! grep -Eq 'SADIM-(HW|PERF|SHELL|WIN10|ADMIN|BRAVE|WINE)-OK' sadim/ci/boot-test-iso.sh
           grep -q '^CONFIG_SQUASHFS=y$' sadim/kernel/fragments/qemu-minimal.config
           grep -q '^CONFIG_ZRAM=y$' sadim/kernel/fragments/qemu-minimal.config
           grep -q '^CONFIG_ZSMALLOC=y$' sadim/kernel/fragments/qemu-minimal.config
