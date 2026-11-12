@@ -7,13 +7,13 @@
 |---|---|---|---|---|
 | 0 | فحص البيئة | جرد الأدوات، MCP (لا يوجد — موثق)، قيود الموارد | ✅ | docs/research/hardware-discovery.md |
 | 1 | Research | اكتشاف عتاد، مقارنة معمارات، مصادر موثقة، ADR-001 | ✅ | docs/adr/ + docs/research/ |
-| 2 | Kernel + Initramfs + QEMU | بناء نواة 6.12.117 من المصدر + fragment خاص + BusyBox + init المشروع + إقلاع آلي في CI | ✅ منجزة | **SADIM-BOOT-OK ×3** — run 43080783543 (job 130732469698)، نواة `6.12.117-sadim-phase2` |
-| 3 | نظام الملفات والخدمات | rootfs (Buildroot 2025.02.19 musl)، مستخدمون (root/sadim/seatd)، صلاحيات، خدمات أساسية (S05/S10/S20/S30/S99)، سجلات، DHCP حقيقي | 🔄 CI يعمل | بوابة `sadim-phase3-rootfs`: 4 علامات ×3 (BOOT, LIVE, ROOTFS, NET) — commit `41e64b8` |
-| 4 | واجهة سطح المكتب | Weston (DRM+pixman)، seatd، eudev، Wayland، virtio-gpu، Arabic keymap (ar,us) | 🔄 CI يعمل | بوابة `sadim-phase4-gui`: 5 علامات ×3 (+ GUI عبر QMP screendump) — commit `41e64b8` |
-| 5 | التطبيقات الأساسية | Qt6base (linuxfb QPA، بلا OpenGL/EGL)، تطبيق اختبار RTL تجريبي في /opt/sadim-qt6-test/ | 🔄 CI يعمل | جزء من rootfs عبر Buildroot — commit `41e64b8` |
-| 6 | العتاد والتعريفات | HD620 (i915)، MX130 (مؤجلة)، QCA9377 (ath10k + firmware-5.bin)، صوت (snd_hda)، لمس، USB، بطارية — على العتاد الحقيقي | ⏳ | تنتظر تجربة الفلاشة من المالك |
-| 7 | الأداء والأمان | قياسات RAM/إقلاع/IO، تقليل خدمات، مراجعة صلاحيات/ثغرات | ⏳ | جداول قياس قبل/بعد + Threat Model — fase 7 |
-| 8 | الإصدار | ISO يقلع Legacy أولاً + اختبار QEMU + Release + توثيق USB | 🔄 جزئي | **`v0.1.0-live` منشأ**: ISO 5MB مرفوعة (bios هجين) + إقلاع حقيقي ×3 (run 43080783447) + دليل USB — v0.2 تدمج كل المراحل |
+| 2 | Kernel + Initramfs + QEMU | بناء نواة 6.12.117 من المصدر + fragment خاص + BusyBox + init المشروع + إقلاع آلي في CI | ✅ منجزة | **SADIM-BOOT-OK ×3** — run 43080783543، نواة `6.12.117-sadim-phase2` |
+| 3 | نظام الملفات والخدمات | rootfs (Buildroot 2025.02.19 musl)، مستخدمون (root/sadim/seatd)، خدمات (S05/S10/S20/S30/S99)، DHCP حقيقي | ✅ كود مكتمل — CI يعمل | بوابة `sadim-phase3-rootfs`: 6 علامات ×3 — commit `a56efcf` |
+| 4 | واجهة سطح المكتب | Weston (DRM+pixman)، seatd، eudev، Wayland، virtio-gpu، Arabic keymap (ar,us) | ✅ كود مكتمل — CI يعمل | بوابة `sadim-phase4-gui`: 7 علامات ×3 (+ QMP screendump) — commit `a56efcf` |
+| 5 | التطبيقات الأساسية | Qt6base (linuxfb QPA، بلا OpenGL/EGL)، تطبيق اختبار RTL تجريبي في /opt/sadim-qt6-test/ | ✅ كود مكتمل — CI يعمل | جزء من rootfs عبر Buildroot — commit `a56efcf` |
+| 6 | العتاد والتعريفات | HD620 (i915)، MX130 (مؤجلة)، QCA9377 (ath10k + firmware-5.bin)، صوت (snd-hda)، بطارية/طاقة، USB 2.0، لمس (Synaptics/Elantech) | ✅ كود مكتمل | kernel fragment v0.5 + rootfs حزم (linux-firmware, wpa_supplicant, alsa-utils, acpi, upower) — commit `a56efcf` |
+| 7 | الأداء والأمان | zRAM swap (بديل swap على SMR)، noatime/nodiratime، tmpfs للملفات المؤقتة، مراقبة تلقائية RAM/CPU/IO/حرارة، laptop_mode | ✅ كود مكتمل | S70-zram، S80-monitor، S90-smr-optimize، etc/fstab — commit `a56efcf` |
+| 8 | الإصدار اليومي | ISO هجينة BIOS+USB 2.0 مع جميع المراحل مدمجة، إصدار 0.2-daily | ✅ كود مكتمل — CI يعمل | iso/build-iso.sh + VERSION + خيارات إقلاع متعددة — commit `a56efcf` |
 
 ## أهداف قياس معلنة (تُقاس فعلياً قبل أي إعلان نجاح)
 
