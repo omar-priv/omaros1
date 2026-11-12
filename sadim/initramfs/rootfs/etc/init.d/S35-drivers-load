@@ -7,12 +7,31 @@ set -u
 
 log() { echo "[drivers] $*"; }
 
+# التحقق من أن النظام يعمل فعلياً (ليس في initramfs قبل switch_root)
+is_runtime_ready() {
+  # إذا كان /proc مmounted و /sys مmounted، فإن النظام جاهز لتحميل التعريفات
+  if [ ! -d /proc ] || [ ! -d /sys ]; then
+    return 1
+  fi
+  # التحقق من أن modprobe متاح
+  if ! command -v modprobe >/dev/null 2>&1; then
+    return 1
+  fi
+  return 0
+}
+
 load_driver() {
   local drv="$1"
 
+  # التحقق من أن النظام جاهز لتحميل التعريفات
+  if ! is_runtime_ready; then
+    log "INFO: النظام غير جاهز لتحميل التعريفات (قد يكون في initramfs) — تخطي $drv"
+    return 0
+  fi
+
   # التحقق من وجود التعريف قبل محاولة التحميل
-  if [ ! -f "/lib/modules/$(uname -r)/kernel/$drv.ko" ] 2>/dev/null && \
-     [ ! -f "/lib/modules/$(uname -r)/kernel/drivers/*/$drv.ko" ] 2>/dev/null; then
+  if [ ! -f "/lib/modules/$(uname -r 2>/dev/null)/kernel/$drv.ko" ] 2>/dev/null && \
+     [ ! -f "/lib/modules/$(uname -r 2>/dev/null)/kernel/drivers/*/$drv.ko" ] 2>/dev/null; then
     log "INFO: تعريف $drv غير موجود في النواة (قد يكون مدمجاً أو غير مطلوب)"
     return 0
   fi
@@ -26,6 +45,11 @@ load_driver() {
 
 start_drivers() {
   log "بدء تحميل جميع تعريفات العتاد تلقائياً…"
+
+  if ! is_runtime_ready; then
+    log "WARN: النظام غير جاهز لتحميل التعريفات في هذه المرحلة — سيتم تحميلها بعد switch_root"
+    return 0
+  fi
 
   # 1. تعريفات الشاشة والعرض
   load_driver i915           # Intel HD 620

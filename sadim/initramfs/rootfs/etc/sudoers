@@ -1,0 +1,26 @@
+# Sadim OS — sudoers (ملف الصلاحيات الإدارية)
+# المستخدم sadim عادي للاستخدام اليومي، sudo للإدارة عند الحاجة
+# ⚠️ أمان: لا تعطيل كلمة مرور sudo للاستخدام اليومي — المطلوب كلمة مرور للإدارية
+
+# قاعدة الافتراضية: جميع المستخدمين في مجموعة sudo يمكنهم تشغيل أي أمر ك root
+%sudo ALL=(ALL:ALL) ALL
+
+# مستخدم sadim يمكن استخدام sudo (سيُطلب كلمة مرور)
+sadim ALL=(ALL:ALL) ALL
+
+# السماح بتشغيل أوامر محددة بدون كلمة مرور للتشغيل اليومي الآمن
+sadim ALL=(ALL) NOPASSWD: /usr/bin/sadim-settings
+sadim ALL=(ALL) NOPASSWD: /usr/bin/sadim-task-manager
+sadim ALL=(ALL) NOPASSWD: /bin/mount
+sadim ALL=(ALL) NOPASSWD: /bin/umount
+sadim ALL=(ALL) NOPASSWD: /sbin/modprobe
+sadim ALL=(ALL) NOPASSWD: /sbin/swapon
+sadim ALL=(ALL) NOPASSWD: /sbin/swapoff
+
+# تقييد الأوامر الخطيرة بدون كلمة مرور
+# sadim ALL=(ALL) NOPASSWD: /sbin/reboot   # معطل — يتطلب تأكيداً
+# sadim ALL=(ALL) NOPASSWD: /sbin/poweroff # معطل — يتطلب تأكيداً
+
+Defaults env_reset
+Defaults mail_badpass
+Defaults secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"

@@ -1,5 +1,6 @@
-root:x:0:sadim
+root:x:0:
 tty:x:5:
-sadim:x:0:sadim
+sadim:x:1000:sadim
 seat:x:998:sadim
 seatd:x:999:
+sudo:x:27:sadim

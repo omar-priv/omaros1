@@ -1,0 +1,209 @@
+#!/bin/sh
+# Sadim OS — Wi-Fi Manager (أداة إدارة Wi-Fi)
+# إدارة شبكات Wi-Fi لبطاقة QCA9377 (ath10k)
+# لا أدوات خارجية — أوامر ip و wpa_supplicant فقط
+
+set -e
+
+IFACE="${1:-wlan0}"
+LOG_FILE="/var/log/sadim-wifi.log"
+
+log() { echo "[wifi-mgr] $*"; echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG_FILE" 2>/dev/null || true; }
+
+# عرض المساعدة
+show_help() {
+  echo "Sadim OS Wi-Fi Manager — إدارة شبكة Wi-Fi"
+  echo ""
+  echo "الاستخدام: sadim-wifi-manager [واجهة] [أمر]"
+  echo ""
+  echo "الأوامر:"
+  echo "  scan      — البحث عن الشبكات المتاحة"
+  echo "  connect   — الاتصال بشبكة Wi-Fi"
+  echo "  disconnect— قطع الاتصال"
+  echo "  status    — حالة الاتصال الحالية"
+  echo "  list      — عرض الشبكات المحفوظة"
+  echo "  help      — عرض هذه المساعدة"
+  echo ""
+  echo "أمثلة:"
+  echo "  sadim-wifi-manager wlan0 scan"
+  echo "  sadim-wifi-manager wlan0 connect MyNetwork password123"
+  echo ""
+  echo "⚠️  ملاحظة: بطاقة QCA9377 تتطلب firmware-5.bin (مضمن في النظام)"
+}
+
+# البحث عن الشبكات
+scan_networks() {
+  local iface="$1"
+  echo "البحث عن شبكات Wi-Fi على: $iface"
+  echo "================================"
+
+  if ! ip link show "$iface" >/dev/null 2>&1; then
+    echo "الواجهة $iface غير موجودة"
+    echo "الأInterfaces المتاحة:"
+    ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | head -10
+    return 1
+  fi
+
+  # تشغيل الواجهة
+  ip link set "$iface" up 2>/dev/null || log "WARN: تعذر تشغيل الواجهة $iface"
+
+  # البحث باستخدام iw إذا كان متاحاً
+  if command -v iw >/dev/null 2>&1; then
+    echo "الشبكات المتاحة:"
+    iw dev "$iface" scan 2>/dev/null | grep -E 'SSID|signal' | head -30 || echo "لا توجد شبكات مكتشفة"
+  elif command -v iwlist >/dev/null 2>&1; then
+    iwlist "$iface" scan 2>/dev/null | grep -E 'ESSID|Quality' | head -30 || echo "لا توجد شبكات مكتشفة"
+  else
+    echo "أداة مسح الشبكات غير متاحة (iw أو iwlist)"
+    return 1
+  fi
+}
+
+# الاتصال بشبكة
+connect_network() {
+  local iface="$1"
+  local ssid="$2"
+  local password="$3"
+
+  if [ -z "$ssid" ]; then
+    echo "يجب تحديد اسم الشبكة (SSID)"
+    echo "الاستخدام: sadim-wifi-manager $iface connect <SSID> [كلمة المرور]"
+    return 1
+  fi
+
+  echo "الاتصال بشبكة Wi-Fi: $ssid على واجهة: $iface"
+  echo "================================"
+
+  if ! ip link show "$iface" >/dev/null 2>&1; then
+    echo "الواجهة $iface غير موجودة"
+    return 1
+  fi
+
+  # تشغيل الواجهة
+  ip link set "$iface" up 2>/dev/null || log "WARN: تعذر تشغيل الواجهة"
+
+  # إيقاف أي اتصال سابق
+  if command -v wpa_supplicant >/dev/null 2>&1; then
+    killall wpa_supplicant 2>/dev/null || true
+    sleep 1
+
+    # إنشاء تكوين مؤقت
+    local conf_file="/tmp/wpa_supplicant.conf"
+    if [ -n "$password" ]; then
+      wpa_passphrase "$ssid" "$password" > "$conf_file" 2>/dev/null || \
+        echo "network={\n  ssid=\"$ssid\"\n  psk=\"$password\"\n}" > "$conf_file"
+    else
+      echo "network={\n  ssid=\"$ssid\"\n  key_mgmt=NONE\n}" > "$conf_file"
+    fi
+
+    # تشغيل wpa_supplicant
+    wpa_supplicant -B -i "$iface" -c "$conf_file" 2>/dev/null || \
+      log "WARN: تعذر تشغيل wpa_supplicant"
+    sleep 3
+
+    # جلب عنوان IP
+    if command -v udhcpc >/dev/null 2>&1; then
+      udhcpc -i "$iface" -q -n -t 5 2>/dev/null || log "WARN: تعذر جلب عنوان IP عبر DHCP"
+    fi
+
+    echo "محاولة الاتصال بشبكة: $ssid"
+    echo "تحقق من الحالة باستخدام: sadim-wifi-manager $iface status"
+  else
+    echo "أداة wpa_supplicant غير مثبتة"
+    return 1
+  fi
+}
+
+# قطع الاتصال
+disconnect_network() {
+  local iface="$1"
+  echo "قطع الاتصال عن شبكة Wi-Fi على: $iface"
+  echo "================================"
+
+  if command -v wpa_supplicant >/dev/null 2>&1; then
+    killall wpa_supplicant 2>/dev/null || true
+    echo "تم قطع الاتصال"
+  fi
+
+  ip link set "$iface" down 2>/dev/null || true
+  echo "تم إيقاف الواجهة: $iface"
+}
+
+# حالة الاتصال
+show_status() {
+  local iface="$1"
+  echo "حالة اتصال Wi-Fi: $iface"
+  echo "================================"
+
+  if ! ip link show "$iface" >/dev/null 2>&1; then
+    echo "الواجهة غير موجودة"
+    return 1
+  fi
+
+  # حالة الواجهة
+  local state
+  state=$(cat "/sys/class/net/$iface/operstate" 2>/dev/null || echo "غير معروف")
+  echo "حالة الواجهة: $state"
+
+  # العنوان IP
+  if command -v ip >/dev/null 2>&1; then
+    local ip_addr
+    ip_addr=$(ip addr show "$iface" 2>/dev/null | grep -oP 'inet \K[\d.]+' || echo "لا يوجد")
+    echo "عنوان IP: $ip_addr"
+  fi
+
+  # قوة الإشارة (إذا كان iw متاحاً)
+  if command -v iw >/dev/null 2>&1; then
+    local signal
+    signal=$(iw dev "$iface" link 2>/dev/null | grep 'signal:' | awk '{print $2}')
+    if [ -n "$signal" ]; then
+      echo "قوة الإشارة: ${signal} dBm"
+    fi
+  fi
+
+  # SSID الحالي
+  if command -v iw >/dev/null 2>&1; then
+    local ssid
+    ssid=$(iw dev "$iface" info 2>/dev/null | grep ssid | awk '{print $2}')
+    if [ -n "$ssid" ]; then
+      echo "الشبكة المتصلة: $ssid"
+    fi
+  fi
+}
+
+# عرض الشبكات المحفوظة
+list_saved() {
+  echo "الشبكات المحفوظة في نظام سديم OS:"
+  echo "================================"
+  if [ -f /etc/wpa_supplicant/wpa_supplicant.conf ]; then
+    grep -E 'ssid|psk' /etc/wpa_supplicant/wpa_supplicant.conf 2>/dev/null || echo "لا توجد شبكات محفوظة"
+  else
+    echo "لا يوجد ملف تكوين لشبكات Wi-Fi"
+  fi
+  echo ""
+  echo "لإضافة شبكة: sadim-wifi-manager $IFACE connect <SSID> [كلمة المرور]"
+}
+
+# المعالجة الرئيسية
+main() {
+  local iface="$1"
+  local cmd="$2"
+  local ssid="$3"
+  local password="$4"
+
+  if [ -z "$iface" ]; then
+    show_help
+    exit 0
+  fi
+
+  case "$cmd" in
+    scan) scan_networks "$iface" ;;
+    connect) connect_network "$iface" "$ssid" "$password" ;;
+    disconnect) disconnect_network "$iface" ;;
+    status) show_status "$iface" ;;
+    list) list_saved ;;
+    help|--help|-h|*) show_help ;;
+  esac
+}
+
+main "$@"

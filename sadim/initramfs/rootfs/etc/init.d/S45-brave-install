@@ -11,6 +11,10 @@ BRAVE_DIR="/opt/brave"
 BRAVE_BIN="$BRAVE_DIR/brave-browser"
 BRAVE_INSTALLED_FLAG="/var/lib/brave-installed"
 BRAVE_URL="https://github.com/brave/brave-browser/releases/latest/download/brave-browser-linux-x64.zip"
+# ⚠️ يجب تحديث هذه التجزئة من الموقع الرسمي لـ Brave قبل كل إصدار
+# يمكن الحصول عليها عبر: sha256sum brave-browser-linux-x64.zip
+BRAVE_EXPECTED_SHA256=""
+BRAVE_SIGNATURE_URL="https://github.com/brave/brave-browser/releases/latest/download/brave-browser-linux-x64.zip.sig"
 
 install_brave() {
   log "بدء تحميل وتثبيت متصفح Brave Browser…"
@@ -43,6 +47,23 @@ install_brave() {
     log "ERROR: تعذر تحميل Brave Browser — تحقق من اتصال الإنترنت"
     log "يمكن تثبيته يدوياً لاحقاً من: https://brave.com/"
     return 1
+  fi
+
+  # التحقق من التجزئة (SHA256) إذا كانت محددة
+  if [ -n "$BRAVE_EXPECTED_SHA256" ] && command -v sha256sum >/dev/null 2>&1; then
+    log "التحقق من تجزئة الملف المحمل…"
+    ACTUAL_SHA256=$(sha256sum /tmp/brave-browser.zip 2>/dev/null | awk '{print $1}')
+    if [ "$ACTUAL_SHA256" != "$BRAVE_EXPECTED_SHA256" ]; then
+      log "ERROR: تجزئة الملف لا تتطابق!"
+      log "  المتوقعة: $BRAVE_EXPECTED_SHA256"
+      log "  الفعلية:   $ACTUAL_SHA256"
+      log "  قد يكون الملف مخرباً أو مخترقاً — إيقاف التثبيت للأمان"
+      rm -f /tmp/brave-browser.zip
+      return 1
+    fi
+    log "تم التحقق من التجزئة بنجاح"
+  elif [ -z "$BRAVE_EXPECTED_SHA256" ]; then
+    log "WARN: تجزئة Brave غير محددة — التثبيت بدون التحقق من السلامة (غير موصى به للإنتاج)"
   fi
 
   log "تم تحميل Brave Browser — جاري الاستخراج…"

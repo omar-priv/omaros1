@@ -15,6 +15,7 @@ tmpfs           /run            tmpfs     defaults,noatime,nosuid,size=64M  0 0
 
 # أقسام Windows (NTFS/FAT) — قراءة فقط افتراضياً (حماية ملفات المستخدم)
 # افتحها يدوياً عند الحاجة: mount -t ntfs-3g /dev/sda2 /mnt/windows
+# uid=1000 = معرف المستخدم sadim (مستخدم يومي عادي، ليس root)
 # /dev/sda1   /mnt/windows      ntfs-3g   defaults,noatime,ro,uid=1000,gid=1000  0 0
 
 # أجهزة Swap — zRAM فقط (لا swap على الهارد SMR)

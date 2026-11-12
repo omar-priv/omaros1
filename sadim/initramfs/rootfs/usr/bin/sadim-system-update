@@ -1,0 +1,155 @@
+#!/bin/sh
+# Sadim OS — System Update (أداة تحديث النظام)
+# التحقق من التحديثات وتطبيقها على نظام سديم OS
+# لا أدوات خارجية — الأوامر اليدوية فقط
+
+set -e
+
+RELEASE_URL="https://api.github.com/repos/omar-priv/omaros1/releases/latest"
+CURRENT_VERSION="0.2-daily"
+UPDATE_FLAG="/var/lib/sadim-update-checked"
+
+log() { echo "[sys-update] $*"; }
+
+# عرض المساعدة
+show_help() {
+  echo "Sadim OS System Update — أداة تحديث النظام"
+  echo ""
+  echo "الاستخدام: sadim-system-update [أمر]"
+  echo ""
+  echo "الأوامر:"
+  echo "  check     — التحقق من التحديثات المتاحة"
+  echo "  install   — تحميل وتثبيت أحدث إصدار"
+  echo "  status    — حالة التحديثات الحالية"
+  echo "  help      — عرض هذه المساعدة"
+  echo ""
+  echo "⚠️  تحذير: تحديث النظام يتطلب إعادة الإقلاع وتطبيق التغييرات"
+}
+
+# التحقق من الإصدار الحالي
+show_current_version() {
+  echo "الإصدار الحالي: $CURRENT_VERSION"
+  echo "النواة: $(uname -r 2>/dev/null || echo "غير متاح")"
+  echo "البنية: $(uname -m 2>/dev/null || echo "غير متاح")"
+  echo ""
+  echo "للتحقق من التحديثات: sadim-system-update check"
+}
+
+# التحقق من التحديثات
+check_updates() {
+  log "التحقق من التحديثات المتاحة…"
+
+  if ! command -v wget >/dev/null 2>&1; then
+    log "ERROR: wget غير مثبت — لا يمكن التحقق من التحديثات"
+    return 1
+  fi
+
+  # تحميل معلومات الإصدار الأحدث
+  log "الاتصال بمستودع سديم OS على GitHub…"
+  if ! wget -q -O /tmp/sadim-release-info.json "$RELEASE_URL" 2>/dev/null; then
+    log "ERROR: تعذر الاتصال بمستودع سديم OS"
+    log "تحقق من اتصال الإنترنت وحاول مرة أخرى"
+    return 1
+  fi
+
+  # استخراج رقم الإصدار (بسيط بدون jq)
+  local latest_version
+  latest_version=$(grep -o '"tag_name": *"[^"]*"' /tmp/sadim-release-info.json 2>/dev/null | head -1 | sed 's/"tag_name": *"//;s/"//')
+  if [ -z "$latest_version" ]; then
+    latest_version="غير محدد"
+  fi
+
+  echo "الإصدار الحالي: $CURRENT_VERSION"
+  echo "أحدث إصدار متاح: $latest_version"
+  echo ""
+
+  # مقارنة الإصدارات (بسيطة)
+  if [ "$latest_version" != "$CURRENT_VERSION" ] && [ "$latest_version" != "غير محدد" ]; then
+    log "يوجد تحديث متاح: $latest_version"
+    log "للتثبيت: sadim-system-update install"
+    touch "$UPDATE_FLAG"
+    return 0
+  else
+    log "النظام محدث — لا توجد تحديثات جديدة"
+    rm -f "$UPDATE_FLAG"
+    return 0
+  fi
+}
+
+# تثبيت التحديث
+install_update() {
+  log "بدء عملية تحديث النظام…"
+
+  # التحقق من وجود تحديث متاح
+  if [ ! -f "$UPDATE_FLAG" ]; then
+    log "لا توجد تحديثات مؤكدة للتثبيت"
+    log "قم بالتحقق أولاً: sadim-system-update check"
+    return 1
+  fi
+
+  # تحذير المستخدم
+  echo ""
+  echo "⚠️  تحذير: تحديث النظام سيقوم بما يلي:"
+  echo "  1. تحميل أحدث إصدار من نظام سديم OS"
+  echo "  2. استبدال ملفات النظام الحالية"
+  echo "  3. يتطلب إعادة الإقلاع لتطبيق التغييرات"
+  echo "  4. 모든 التغييرات في الذاكرة (RAM) ستضيع عند إعادة الإقلاع"
+  echo ""
+  echo -n  "  هل تريد المتابعة؟ (y/n): "
+  read confirm
+  if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+    echo "تم إلغاء التحديث."
+    return 0
+  fi
+
+  # الحصول على رابط التحميل
+  local iso_url
+  iso_url=$(grep -o '"browser_download_url": *"[^"]*\.iso"' /tmp/sadim-release-info.json 2>/dev/null | head -1 | sed 's/"browser_download_url": *"//;s/"//')
+  if [ -z "$iso_url" ]; then
+    log "ERROR: لا يوجد ملف ISO في الإصدار الأحدث"
+    return 1
+  fi
+
+  log "تحميل الإصدار الجديد: $iso_url"
+  if ! wget -q -O /tmp/sadim-update.iso "$iso_url" 2>/dev/null; then
+    log "ERROR: تعذر تحميل التحديث"
+    return 1
+  fi
+
+  log "تم تحميل التحديث في: /tmp/sadim-update.iso"
+  log "للتطبيق: اكتب الصورة على فلاشة USB وأعد الإقلاع منها"
+  log "أو انسخ الملفات يدوياً إلى قسم النظام"
+  echo ""
+  echo "ملف التحديث جاهز: /tmp/sadim-update.iso"
+  echo "أعد الإقلاع من الفلاشة لتطبيق التحديث."
+}
+
+# حالة التحديثات
+show_status() {
+  echo "حالة تحديثات نظام سديم OS:"
+  echo "================================"
+  show_current_version
+  echo ""
+  if [ -f "$UPDATE_FLAG" ]; then
+    echo "حالة التحديث: تحديث متاح للتنزيل"
+    echo "قم بتشغيل: sadim-system-update install"
+  else
+    echo "حالة التحديث: محدث"
+  fi
+  echo ""
+  echo "آخر فحص: $(cat /var/lib/sadim-update-last-check 2>/dev/null || echo "لم يتم الفحص بعد")"
+}
+
+# المعالجة الرئيسية
+main() {
+  local cmd="$1"
+
+  case "$cmd" in
+    check) check_updates ;;
+    install) install_update ;;
+    status) show_status ;;
+    help|--help|-h|*) show_help ;;
+  esac
+}
+
+main "$@"

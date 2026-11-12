@@ -10,6 +10,34 @@ WINE_BIN="${WINE_BIN:-/usr/bin/wine}"
 
 log() { echo "[sadim-wine] $*"; }
 
+# تحذير أمني: تطبيقات Windows يمكن أن تحتوي على برمجيات خبيثة
+show_security_warning() {
+  echo ""
+  echo "⚠️  تحذير أمني — تطبيقات Windows (.exe)"
+  echo ""
+  echo "  تشغيل تطبيقات Windows عبر Wine يمكن أن يعرض النظام للخطر:"
+  echo "  - تطبيقات Windows غير موثوقة قد تحتوي على برمجيات خبيثة"
+  echo "  - Wine لا يوفر عزلاً كاملاً عن النظام المضيف"
+  echo "  - يُنصح بتشغيل تطبيقات موثوقة فقط من مصادر معروفة"
+  echo ""
+  echo -n  "  هل تريد المتابعة؟ (y/n): "
+  read confirm
+  if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+    echo "تم إلغاء التشغيل."
+    exit 0
+  fi
+  echo ""
+}
+
+# التحقق من عدم تشغيل Wine ك root (أمان)
+check_not_root() {
+  if [ "$(id -u)" -eq 0 ]; then
+    log "ERROR: لا يُنصح بتشغيل Wine ك root (أمان)"
+    log "  استخدم مستخدم عادي (sadim) لتشغيل تطبيقات Windows"
+    exit 1
+  fi
+}
+
 # إعداد Wine عند第一运行
 setup_wine() {
   if [ ! -d "$WINE_PREFIX" ]; then
@@ -32,6 +60,7 @@ show_help() {
   echo "  sadim-wine /home/sadim/Documents/app.exe /silent"
   echo ""
   echo "ملاحظة: يتطلب تثبيت Wine في النظام (مرحلة 9)"
+  echo "⚠️  تحذير: تطبيقات Windows غير موثوقة قد تشكل خطراً أمنياً"
   exit 0
 }
 
@@ -40,6 +69,12 @@ main() {
   if [ "$1" = "--help" ] || [ "$1" = "-h" ] || [ -z "$1" ]; then
     show_help
   fi
+
+  # التحقق من عدم التشغيل ك root
+  check_not_root
+
+  # عرض التحذير الأمني
+  show_security_warning
 
   local exe_file="$1"
   shift
@@ -53,7 +88,7 @@ main() {
   # التحقق من أن الملف له امتدادية .exe
   case "$exe_file" in
     *.exe|*.EXE) ;;
-    *) log "WARN: الملف ليس له امتدادية .exe،但 سأناول المحاولة";;
+    *) log "WARN: الملف ليس له امتدادية .exe،但 سيتم المحاولة";;
   esac
 
   # التحقق من وجود Wine

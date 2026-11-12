@@ -16,11 +16,15 @@ optimize_smr() {
     log "WARN: تعذر إعادة mounting الجذر مع noatime"
 
   # 2. ضبط وضع writeback للقرص (تجميع الكتابات بدلاً من كتابات فورية)
-  if [ -b /dev/sda ]; then
-    # تعطيل write cache على الأقراص SMR لتجنب تجمع الكتابات الكبيرة
+  # ⚠️ تعليق: تعطيل write cache (hdparm -W 0) قد يقلل أداء القرص بشكل كبير
+  # يُفعّل فقط إذا حدد المستخدم SADIM_SMR_PROTECT_STRICT=1
+  if [ -b /dev/sda ] && [ "${SADIM_SMR_PROTECT_STRICT:-0}" = "1" ]; then
+    log "تفعيل حماية SMR الصارمة (تعطيل write cache على /dev/sda)…"
     hdparm -W 0 /dev/sda 2>/dev/null && \
       log "تم تعطيل write cache على /dev/sda (حماية SMR)" || \
       log "WARN: تعذر ضبط hdparm على /dev/sda"
+  else
+    log "INFO: حماية SMR العادية مفعّلة (noatime + tmpfs + zRAM) — write cache مُفعّل للأداء"
   fi
 
   # 3. ضبط معاييرvm للحد من الكتابة المتواصلة على القرص

@@ -1,0 +1,218 @@
+#!/bin/sh
+# Sadim OS — Power Monitor (مراقبة الطاقة والبطارية)
+# مراقبة صحة البطارية، محول الطاقة، ودرجة الحرارة
+# Acer E5-576G — بطارية بصحة ≈60%
+
+set -e
+
+LOG_FILE="/var/log/sadim-power.log"
+
+log() { echo "[power-mgr] $*"; echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG_FILE" 2>/dev/null || true; }
+
+# عرض المساعدة
+show_help() {
+  echo "Sadim OS Power Monitor — مراقبة الطاقة والبطارية"
+  echo ""
+  echo "الاستخدام: sadim-power-monitor [أمر]"
+  echo ""
+  echo "الأوامر:"
+  echo "  status    — حالة البطارية والطاقة الحالية"
+  echo "  health    — صحة البطارية التفصيلية"
+  echo "  temp      — درجة حرارة النظام"
+  echo "  monitor   — مراقبة مستمرة (كل 10 ثوانٍ)"
+  echo "  help      — عرض هذه المساعدة"
+  echo ""
+  echo "⚠️  ملاحظة: بطارية الجهاز بصحة ≈60% — وقت تشغيل محدود"
+}
+
+# عرض حالة الطاقة
+show_status() {
+  echo "حالة الطاقة والبطارية — نظام سديم OS"
+  echo "================================"
+
+  # حالة محول الطاقة
+  if [ -d /sys/class/power_supply ]; then
+    echo "محولات الطاقة والبطاريات:"
+    for ps in /sys/class/power_supply/*; do
+      [ -d "$ps" ] || continue
+      local name=$(basename "$ps")
+      local type=$(cat "$ps/type" 2>/dev/null || echo "غير معروف")
+      echo "  $name ($type)"
+
+      if [ -r "$ps/online" ]; then
+        local online=$(cat "$ps/online" 2>/dev/null)
+        if [ "$online" = "1" ]; then
+          echo "    الحالة: متصل بالتيار الكهربائي"
+        else
+          echo "    الحالة: غير متصل (بطارية)"
+        fi
+      fi
+
+      if [ -r "$ps/capacity" ]; then
+        local capacity=$(cat "$ps/capacity" 2>/dev/null)
+        echo "    الشحنة: $capacity%"
+      fi
+
+      if [ -r "$ps/status" ]; then
+        local status=$(cat "$ps/status" 2>/dev/null)
+        echo "    स्थिति: $status"
+      fi
+      echo ""
+    done
+  else
+    echo "لا توجد معلومات عن الطاقة والبطارية"
+  fi
+
+  # الوقت المتوقع للتشغيل (تقديري)
+  if [ -r /sys/class/power_supply/BAT*/capacity ] 2>/dev/null; then
+    local capacity
+    capacity=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -1)
+    if [ -n "$capacity" ]; then
+      echo "⚠️  شحنة البطارية الحالية: $capacity%"
+      echo "  وقت التشغيل المتوقع: محدود (بطارية بصحة ≈60%)"
+      echo "  التوصية: احتفظ بشاحن قريب للاستخدام المطول"
+    fi
+  fi
+  echo ""
+}
+
+# عرض صحة البطارية التفصيلية
+show_health() {
+  echo "صحة البطارية التفصيلية"
+  echo "================================"
+
+  if [ -d /sys/class/power_supply ]; then
+    for bat in /sys/class/power_supply/BAT*; do
+      [ -d "$bat" ] || continue
+      local name=$(basename "$bat")
+      echo "البطارية: $name"
+      echo "  ----------------"
+
+      # السعة التصميمية vs الحالية
+      if [ -r "$bat/energy_full_design" ] && [ -r "$bat/energy_full" ]; then
+        local design=$(cat "$bat/energy_full_design" 2>/dev/null)
+        local full=$(cat "$bat/energy_full" 2>/dev/null)
+        if [ -n "$design" ] && [ -n "$full" ] && [ "$design" -gt 0 ]; then
+          local health=$(( full * 100 / design ))
+          echo "  صحة البطارية: $health% (التصميم: $design ميكرووات ساعة، الحالية: $full ميكرووات ساعة)"
+          if [ "$health" -lt 70 ]; then
+            echo "  ⚠️  تحذير: صحة البطارية منخفضة — وقت تشغيل قصير"
+          fi
+        fi
+      fi
+
+      # رقم الدورة (إن وجد)
+      if [ -r "$bat/cycle_count" ]; then
+        local cycles=$(cat "$bat/cycle_count" 2>/dev/null)
+        echo "  دورات الشحن: $cycles"
+      fi
+
+      # الجهد والتيار
+      if [ -r "$bat/voltage_now" ]; then
+        local voltage=$(cat "$bat/voltage_now" 2>/dev/null)
+        echo "  الجهد: $voltage ميكرو فولت"
+      fi
+
+      echo ""
+    done
+  else
+    echo "لا توجد بطارية مكتشفة (نظام ثابت أو سطح مكتب)"
+  fi
+  echo ""
+  echo "⚠️  ملاحظة: البطارية بصحة ≈60% según تقرير المستخدم"
+  echo "  التوصية: استخدم وضع توفير الطاقة (zRAM مفعّل افتراضياً)"
+}
+
+# عرض درجة الحرارة
+show_temp() {
+  echo "درجة حرارة النظام"
+  echo "================================"
+
+  if [ -d /sys/class/thermal ]; then
+    for zone in /sys/class/thermal/thermal_zone*; do
+      [ -d "$zone" ] || continue
+      local name=$(cat "$zone/type" 2>/dev/null || echo "غير معروف")
+      local temp=$(cat "$zone/temp" 2>/dev/null || echo "0")
+      if [ -n "$temp" ] && [ "$temp" != "0" ]; then
+        local temp_c=$(( temp / 1000 ))
+        echo "  $name: ${temp_c}°C"
+        if [ "$temp_c" -gt 80 ]; then
+          echo "    ⚠️  تحذير: درجة حرارة عالية!"
+        elif [ "$temp_c" -gt 60 ]; then
+          echo "    ⚠️  ملاحظة: درجة حرارة مرتفعة بعض الشيء"
+        fi
+      fi
+    done
+  else
+    echo "لا توجد معلومات عن درجة الحرارة"
+  fi
+  echo ""
+}
+
+# مراقبة مستمرة
+monitor_power() {
+  echo "مراقبة الطاقة والبطارية (كل 10 ثوانٍ — اضغط Ctrl+C للإيقاف)"
+  echo "================================"
+
+  while true; do
+    clear
+    echo "مراقبة الطاقة — $(date '+%H:%M:%S')"
+    echo ""
+
+    # الشحنة الحالية
+    if [ -r /sys/class/power_supply/BAT*/capacity ] 2>/dev/null; then
+      local capacity
+      capacity=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -1)
+      echo "الشحنة: $capacity%"
+    fi
+
+    # حالة الاتصال
+    if [ -r /sys/class/power_supply/AC*/online ] 2>/dev/null || [ -r /sys/class/power_supply/ADP*/online ] 2>/dev/null; then
+      local online
+      online=$(cat /sys/class/power_supply/AC*/online /sys/class/power_supply/ADP*/online 2>/dev/null | head -1)
+      if [ "$online" = "1" ]; then
+        echo "الاتصال: متصل بالتيار الكهربائي"
+      else
+        echo "الاتصال: بطارية فقط"
+      fi
+    fi
+
+    # درجة الحرارة
+    if [ -r /sys/class/thermal/thermal_zone0/temp ] 2>/dev/null; then
+      local temp
+      temp=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)
+      echo "درجة الحرارة: $(( temp / 1000 ))°C"
+    fi
+
+    # استخدام الذاكرة
+    if [ -r /proc/meminfo ]; then
+      local mem_total mem_available mem_used mem_pct
+      mem_total=$(grep '^MemTotal:' /proc/meminfo | awk '{print $2}')
+      mem_available=$(grep '^MemAvailable:' /proc/meminfo | awk '{print $2}')
+      if [ -n "$mem_total" ] && [ -n "$mem_available" ]; then
+        mem_used=$((mem_total - mem_available))
+        mem_pct=$(( mem_used * 100 / mem_total ))
+        echo "الذاكرة المستخدمة: $mem_pct% ($((mem_used / 1024)) MB / $((mem_total / 1024)) MB)"
+      fi
+    fi
+
+    echo ""
+    echo "اضغط Ctrl+C للإيقاف"
+    sleep 10
+  done
+}
+
+# المعالجة الرئيسية
+main() {
+  local cmd="$1"
+
+  case "$cmd" in
+    status) show_status ;;
+    health) show_health ;;
+    temp) show_temp ;;
+    monitor) monitor_power ;;
+    help|--help|-h|*) show_help ;;
+  esac
+}
+
+main "$@"
