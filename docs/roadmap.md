@@ -16,6 +16,7 @@
 | 8 | الإصدار اليومي | ISO هجينة BIOS+USB 2.0 مع جميع المراحل مدمجة، إصدار 0.2-daily | ✅ كود مكتمل — CI يعمل | iso/build-iso.sh + VERSION + خيارات إقلاع متعددة — commit `a56efcf` |
 | **9** | **واجهة Windows 10-like للاستخدام اليومي** | Taskbar + Start Menu + File Explorer + Notepad + Calculator + Task Manager + سمة Windows 10 (#0078D7، حواف حادة، Dark Mode، سكريبتات تخصيص مثل Windows Registry) | ✅ كود مكتمل — CI يعمل | sadim-taskbar, sadim-start-menu, sadim-file-explorer, sadim-notepad, sadim-calculator, sadim-task-manager, etc/xdg/weston/weston.ini, etc/sadim/windows10-tweaks.sh, etc/init.d/S15-windows10-shell — commit `b731e65` |
 | **10** | **تعريفات تلقائية + Administrator + Brave + Wine** | S35-drivers-load (تحميل تعريفات تلقائياً)، sadim uid 0 (Administrator تلقائياً)، S45-brave-install (متصفح Brave)، sadim-wine (دعم تطبيقات .exe)، Chromium عبر Buildroot | ✅ كود مكتمل — CI يعمل | etc/init.d/S35-drivers-load, etc/init.d/S45-brave-install, usr/bin/sadim-wine, etc/passwd (uid 0), etc/group (gid 0), rootfs.config (Wine + Chromium) — commit `be2da2d` |
+| **11** | **واجهة Windows 10-like كاملة (المتكاملة)** | sadim-file-explorer (ملفات)، sadim-notepad (مفكرة)، sadim-calculator (حاسبة)، sadim-task-manager (مدير مهام)، sadim-settings (إعدادات)، sadim-terminal (محطة أوامر)، sadim-browser (متصفح)، weston.ini (سطح مكتب مع أيقونات) | ✅ كود مكتمل — CI يعمل | usr/bin/sadim-*, etc/xdg/weston/weston.ini, etc/init.d/S15-windows10-shell — commit `866987b` |
 
 ## أهداف قياس معلنة (تُقاس فعلياً قبل أي إعلان نجاح)
 
