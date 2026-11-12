@@ -18,7 +18,7 @@ for s in /etc/init.d/S*; do
   else
     echo "[rcS] ERROR: $s failed"
     case "$s" in
-      */S05-logging|*/S10-network|*/S20-seatd|*/S75-weston)
+      */S05-logging|*/S20-seatd|*/S25-network|*/S75-weston)
         critical_failed=$((critical_failed + 1))
         ;;
     esac

@@ -99,6 +99,12 @@ jobs:
           grep -q 'firmware-5.bin' sadim/initramfs/build.sh
           grep -q 'S70seatd' sadim/initramfs/rootfs/etc/init.d/S20-seatd
           grep -q 'S75-weston' sadim/initramfs/rootfs/etc/rcS
+          grep -q 'S25-network' sadim/initramfs/rootfs/etc/rcS
+          grep -q 'S10udev' sadim/rootfs/build.sh
+          grep -q 'S25-network' sadim/rootfs/build.sh
+          grep -Fq 'label=${item%%:*}' sadim/initramfs/rootfs/etc/init.d/S35-drivers-load
+          grep -Fq 'path=${item#*:}' sadim/initramfs/rootfs/etc/init.d/S35-drivers-load
+          grep -Fq 'INTERVAL="${SADIM_MONITOR_INTERVAL:-300}"' sadim/initramfs/rootfs/etc/init.d/S80-monitor
 
       - name: Verify key project documentation exists
         run: |

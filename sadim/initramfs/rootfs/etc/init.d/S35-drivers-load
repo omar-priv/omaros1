@@ -10,8 +10,8 @@ start_drivers() {
     "Realtek Ethernet:/sys/bus/pci/drivers/r8169" \
     "Qualcomm Wi-Fi:/sys/bus/pci/drivers/ath10k_pci" \
     "HDA audio:/sys/bus/pci/drivers/snd_hda_intel"; do
-    label=\${item%%:*}
-    path=\${item#*:}
+    label=${item%%:*}
+    path=${item#*:}
     if [ -d "$path" ]; then log "$label driver registered"; else log "$label driver not registered/detected"; fi
   done
   [ -d /sys/class/power_supply ] && log "power-supply class available"

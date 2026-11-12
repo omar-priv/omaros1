@@ -2,7 +2,11 @@
 # Lightweight, read-only metrics. Do not call drop_caches when RAM use is high.
 set -u
 LOG_FILE=/var/log/sadim-monitor.log
-INTERVAL="\${SADIM_MONITOR_INTERVAL:-300}"
+INTERVAL="${SADIM_MONITOR_INTERVAL:-300}"
+case "$INTERVAL" in
+  ''|*[!0-9]*) INTERVAL=300 ;;
+esac
+[ "$INTERVAL" -gt 0 ] 2>/dev/null || INTERVAL=300
 PID_FILE=/var/run/sadim-monitor.pid
 collect_metrics() {
   ts=$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date)
@@ -39,7 +43,7 @@ start_monitor() {
   mkdir -p /var/log /var/run
   touch "$LOG_FILE"
   [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null && return 0
-  (while :; do collect_metrics; sleep "$INTERVAL"; done) &
+  (while :; do collect_metrics; sleep "$INTERVAL" || sleep 300; done) &
   echo $! > "$PID_FILE"
   echo "[monitor] started; interval=$INTERVAL s"
 }
@@ -54,5 +58,5 @@ case "$1" in
   restart) stop_monitor; start_monitor ;;
   status) [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null && echo "monitor active" || echo "monitor inactive" ;;
   metrics) collect_metrics ;;
-  *) echo "Usage: $0 {start|stop|restart|status|metrics}"; exit 1 ;;
+  *) echo "Usage: $0 {start|stop|restart|status}"; exit 1 ;;
 esac
