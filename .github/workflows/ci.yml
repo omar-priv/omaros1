@@ -91,7 +91,7 @@ jobs:
           grep -Fq 'for dev in /dev/sr* /dev/sd*' sadim/initramfs/init
           grep -q 'firmware-5.bin' sadim/initramfs/build.sh
           grep -q 'S70seatd' sadim/initramfs/rootfs/etc/init.d/S20-seatd
-          grep -q 'S75-weston' sadim/initramfs/rootfs/etc/init.d/S20-seatd
+          grep -q 'S75-weston' sadim/initramfs/rootfs/etc/rcS
 
       - name: Verify key project documentation exists
         run: |
