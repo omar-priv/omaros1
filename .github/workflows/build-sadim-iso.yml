@@ -113,6 +113,7 @@ jobs:
           name: sadim-v02-build-diagnostics
           path: |
             sadim/output/kernel-build.log
+            sadim/output/kernel.config
             sadim/output/buildroot-build/build.log
             sadim/output/buildroot-build/.config
           if-no-files-found: ignore

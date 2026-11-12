@@ -38,9 +38,10 @@ if [ ! -s "$SRC/arch/x86/boot/bzImage" ]; then
   ./scripts/config --enable BLOCK --enable SCSI --enable USB_SUPPORT --enable USB --enable USB_STORAGE
   make olddefconfig
 
+  cp .config "$OUT/kernel.config"
   echo "[sadim] effective USB storage dependency chain:"
   for symbol in CONFIG_BLOCK CONFIG_SCSI CONFIG_USB_SUPPORT CONFIG_USB CONFIG_USB_STORAGE; do
-    grep -E "^\${symbol}=|^# \${symbol} is not set$" .config || echo "$symbol missing or unset"
+    grep -E "^${symbol}=|^# ${symbol} is not set$" .config || echo "$symbol missing or unset"
   done
 
   # Kconfig silently drops unknown symbols or options with unmet dependencies.

@@ -76,6 +76,7 @@ jobs:
           grep -Fq 'for symbol in "${required[@]}"; do' sadim/kernel/build.sh
           grep -Fq 'grep -qx "${symbol}=y" .config' sadim/kernel/build.sh
           ! grep -Fq '\${symbol}' sadim/kernel/build.sh
+          grep -Fq 'cp .config "$OUT/kernel.config"' sadim/kernel/build.sh
           grep -q '^CONFIG_ZRAM=y$' sadim/kernel/fragments/qemu-minimal.config
           grep -q '^CONFIG_ZSMALLOC=y$' sadim/kernel/fragments/qemu-minimal.config
           grep -q 'SADIM-LIVE-OK' sadim/initramfs/init
