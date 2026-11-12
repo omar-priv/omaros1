@@ -17,11 +17,11 @@ cp "$OUT/initramfs.cpio.gz" "$ISODIR/boot/initramfs-sadim.img"
 cp "$OUT/rootfs.squashfs" "$ISODIR/live/rootfs.squashfs"
 
 LOCALVERSION="$(awk -F '"' '/^CONFIG_LOCALVERSION=/{print $2}' "$ROOT/kernel/fragments/qemu-minimal.config")"
-KERNEL_RELEASE="6.12.117\${LOCALVERSION:--sadim}"
+KERNEL_RELEASE="6.12.117${LOCALVERSION:--sadim}"
 cat > "$ISODIR/sadim/VERSION" <<EOF
 Sadim OS v0.2-daily
 Build: $(date -u +%Y-%m-%dT%H:%M:%SZ)
-Kernel: \${KERNEL_RELEASE}
+Kernel: ${KERNEL_RELEASE}
 Target: Acer Aspire E5-576G (i5-7200U, 4GB RAM)
 Boot: Legacy BIOS / hybrid USB
 Mode: Live only; rootfs SquashFS + volatile tmpfs overlay
