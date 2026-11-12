@@ -71,6 +71,8 @@ jobs:
           grep -q '^BR2_PACKAGE_BUSYBOX_SHOW_OTHERS=y$' sadim/rootfs/sadim-rootfs.config
           ! grep -q -- '--no-config' sadim/initramfs/rootfs/etc/init.d/S30-weston
           ! grep -q 'BRAVE_EXPECTED_SHA256=""' sadim/initramfs/rootfs/etc/init.d/S45-brave-install
+          grep -Fq 'scripts/config --enable BLOCK --enable SCSI --enable USB_SUPPORT --enable USB --enable USB_STORAGE' sadim/kernel/build.sh
+          grep -Fq 'CONFIG_BLOCK CONFIG_SCSI CONFIG_USB_SUPPORT CONFIG_USB CONFIG_USB_STORAGE' sadim/kernel/build.sh
           grep -Fq 'for symbol in "${required[@]}"; do' sadim/kernel/build.sh
           grep -Fq 'grep -qx "${symbol}=y" .config' sadim/kernel/build.sh
           ! grep -Fq '\${symbol}' sadim/kernel/build.sh
