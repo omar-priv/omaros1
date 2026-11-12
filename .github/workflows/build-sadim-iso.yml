@@ -17,14 +17,14 @@ concurrency:
 
 jobs:
   build-live-iso:
-    name: Build and boot-test Sadim OS v0.2-daily
+    name: Build Sadim OS v0.2-daily Live ISO
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Install build and QEMU dependencies
+      - name: Install ISO build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
@@ -82,7 +82,7 @@ jobs:
             echo "Hardware test: NOT PERFORMED"
           } > BUILD-REPORT.txt
 
-      - name: Upload tested ISO
+      - name: Upload bootable Live ISO
         if: success()
         uses: actions/upload-artifact@v4
         with:
