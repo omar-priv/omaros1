@@ -71,7 +71,7 @@ jobs:
       - name: Boot-test ISO in SeaBIOS QEMU
         run: |
           set -euo pipefail
-          timeout 180s qemu-system-x86_64 \
+          timeout 90s qemu-system-x86_64 \
             -machine pc,accel=tcg -m 2048 -smp 2 \
             -cdrom sadim/output/sadim.iso -boot d \
             -display none -serial stdio -monitor none -no-reboot \
@@ -79,9 +79,8 @@ jobs:
           cat /tmp/sadim-qemu.log
           grep -q "SADIM-BOOT-OK" /tmp/sadim-qemu.log
           grep -q "SADIM-LIVE-OK" /tmp/sadim-qemu.log
-          if [ "${status:-0}" -eq 124 ]; then
-            echo "QEMU timed out before clean shutdown"; exit 1
-          fi
+          # A successful Live OS is expected to keep running; timeout is only the test window.
+          # The two boot markers, not a guest shutdown, determine pass/fail.
 
       - name: Generate checksums and build report
         if: success()
