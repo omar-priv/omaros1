@@ -4,9 +4,6 @@ name: sadim-live-iso
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths: ["sadim/kernel/**", "sadim/initramfs/**", "sadim/rootfs/**", "sadim/iso/**", "sadim/ci/**", ".github/workflows/live-iso.yml"]
 
 permissions:
   contents: read
