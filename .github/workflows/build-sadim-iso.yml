@@ -1,0 +1,123 @@
+name: Sadim OS v0.2-daily ISO
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "sadim/**"
+      - ".github/workflows/build-sadim-iso.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sadim-iso-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-live-iso:
+    name: Build and boot-test Sadim OS v0.2-daily
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install build and QEMU dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential bc bison flex libssl-dev libelf-dev \
+            cpio gzip xz-utils wget curl rsync file patch perl python3 \
+            unzip git xorriso isolinux syslinux-common squashfs-tools \
+            qemu-system-x86
+
+      - name: Cache source downloads and compiler cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            sadim/output/dl
+            sadim/output/dl-rootfs
+            sadim/output/ccache
+          key: sadim-v02-${{ runner.os }}-${{ hashFiles('sadim/kernel/version.mk', 'sadim/rootfs/sadim-rootfs.config', 'sadim/kernel/fragments/qemu-minimal.config') }}
+          restore-keys: |
+            sadim-v02-${{ runner.os }}-
+
+      - name: Build Linux kernel
+        run: bash sadim/kernel/build.sh
+
+      - name: Build initramfs
+        run: bash sadim/initramfs/build.sh
+
+      - name: Build complete root filesystem
+        run: bash sadim/rootfs/build.sh
+
+      - name: Build hybrid BIOS and USB ISO
+        run: bash sadim/iso/build-iso.sh
+
+      - name: Verify ISO structure and metadata
+        run: |
+          set -euo pipefail
+          test -s sadim/output/sadim.iso
+          file sadim/output/sadim.iso
+          xorriso -indev sadim/output/sadim.iso -report_el_torito as_mkisofs
+          xorriso -indev sadim/output/sadim.iso -find / -type f -print
+          mkdir -p /tmp/sadim-iso-check
+          xorriso -osirrox on -indev sadim/output/sadim.iso -extract /live/rootfs.squashfs /tmp/sadim-iso-check/rootfs.squashfs
+          test -s /tmp/sadim-iso-check/rootfs.squashfs
+          unsquashfs -s /tmp/sadim-iso-check/rootfs.squashfs
+
+      - name: Boot-test ISO in SeaBIOS QEMU
+        run: |
+          set -euo pipefail
+          timeout 180s qemu-system-x86_64 \
+            -machine pc,accel=tcg -m 2048 -smp 2 \
+            -cdrom sadim/output/sadim.iso -boot d \
+            -display none -serial stdio -monitor none -no-reboot \
+            > /tmp/sadim-qemu.log 2>&1 || status=$?
+          cat /tmp/sadim-qemu.log
+          grep -q "SADIM-BOOT-OK" /tmp/sadim-qemu.log
+          grep -q "SADIM-LIVE-OK" /tmp/sadim-qemu.log
+          if [ "${status:-0}" -eq 124 ]; then
+            echo "QEMU timed out before clean shutdown"; exit 1
+          fi
+
+      - name: Generate checksums and build report
+        if: success()
+        run: |
+          cd sadim/output
+          sha256sum sadim.iso > sadim.iso.sha256
+          {
+            echo "Sadim OS v0.2-daily"
+            echo "Commit: ${GITHUB_SHA}"
+            echo "Built: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "ISO bytes: $(stat -c%s sadim.iso)"
+            echo "Kernel: $(file bzImage)"
+            echo "Boot test: PASS (SeaBIOS/QEMU; SADIM-BOOT-OK + SADIM-LIVE-OK)"
+            echo "Hardware test: NOT PERFORMED"
+          } > BUILD-REPORT.txt
+
+      - name: Upload tested ISO
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sadim-os-v0.2-daily-iso
+          path: |
+            sadim/output/sadim.iso
+            sadim/output/sadim.iso.sha256
+            sadim/output/BUILD-REPORT.txt
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sadim-v02-build-diagnostics
+          path: |
+            sadim/output/buildroot-build/build.log
+            /tmp/sadim-qemu.log
+          if-no-files-found: ignore
+          retention-days: 7
