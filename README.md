@@ -4,13 +4,13 @@ Sadim OS is a source-built, x86_64 Live Linux system under development for an Ac
 
 ## Honest current status — 12 November 2026
 
-The active ISO job #9 was started from commit f1dc985 before the latest review fixes. It is an older snapshot and must not be treated as the reviewed image.
-
-The repository now contains a safer Live boot path, corrected Buildroot symbols, a real Weston startup check, built-in zRAM configuration and updated documentation. Those changes still require a fresh successful build and a real USB boot test. There is currently no reviewed ISO download.
+There is currently **no reviewed ISO download**. The latest attempts have confirmed that the kernel builds successfully (Run #15 produced a 4,469,760-byte bzImage). Buildroot then caught two optional text-shaping packages that were incompatible with this deliberately lean musl profile. Those unused entries were removed; the next full build is running from commit 9655561. Static CI for that commit passed.
 
 - Repository: https://github.com/omar-priv/omaros1
-- Active older build: https://github.com/omar-priv/omaros1/actions/runs/43147836495
-- Build policy: ISO workflow is manual-only while the retained job finishes; a new build must be started explicitly after review.
+- Current build history: https://github.com/omar-priv/omaros1/actions
+- Build policy: the ISO workflow starts automatically after changes under `sadim/**` and remains manually triggerable. It does not cancel an already-running ISO build.
+
+Do not flash an artifact unless the ISO workflow completes successfully and publishes `sadim.iso`, `sadim.iso.sha256` and `BUILD-REPORT.txt`.
 
 ## What the current base aims to provide
 

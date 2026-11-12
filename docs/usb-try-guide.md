@@ -1,6 +1,6 @@
 # Sadim OS — Live USB trial guide
 
-**Status: not yet ready to flash.** The active ISO Run #9 is an older snapshot from commit f1dc985. It started before the latest boot, zRAM, Weston and Buildroot fixes. Do not use it as the reviewed build.
+**Status: not yet ready to flash.** No ISO has passed the current build and verification workflow yet. Run #15 built the kernel but stopped at Buildroot configuration; optional unused text-shaping packages were removed, and a newer full build is in progress. Do not use an older artifact as the reviewed build. Check [GitHub Actions](https://github.com/omar-priv/omaros1/actions) for the latest result.
 
 When a new reviewed artifact appears, use these steps:
 
