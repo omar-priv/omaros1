@@ -35,12 +35,12 @@ if [ ! -s "$SRC/arch/x86/boot/bzImage" ]; then
   ./scripts/kconfig/merge_config.sh -m .config "$ROOT/kernel/fragments/qemu-minimal.config"
   # Make the dependency chain explicit: USB mass storage requires SCSI, which
   # requires the block layer. Keep these built in for USB Live boot.
-  ./scripts/config --enable BLOCK --enable SCSI --enable USB_SUPPORT --enable USB --enable USB_STORAGE --enable MISC_FILESYSTEMS
+  ./scripts/config --enable BLOCK --enable SCSI --enable USB_SUPPORT --enable USB --enable USB_STORAGE --enable MISC_FILESYSTEMS --enable NETDEVICES --enable WLAN --enable SOUND
   make olddefconfig
 
   cp .config "$OUT/kernel.config"
   echo "[sadim] effective USB storage dependency chain:"
-  for symbol in CONFIG_BLOCK CONFIG_SCSI CONFIG_USB_SUPPORT CONFIG_USB CONFIG_USB_STORAGE CONFIG_MISC_FILESYSTEMS; do
+  for symbol in CONFIG_BLOCK CONFIG_SCSI CONFIG_USB_SUPPORT CONFIG_USB CONFIG_USB_STORAGE CONFIG_MISC_FILESYSTEMS CONFIG_NETDEVICES CONFIG_WLAN CONFIG_SOUND; do
     grep -E "^${symbol}=|^# ${symbol} is not set$" .config || echo "$symbol missing or unset"
   done
 
@@ -49,7 +49,7 @@ if [ ! -s "$SRC/arch/x86/boot/bzImage" ]; then
   required=(
     CONFIG_BLK_DEV_INITRD CONFIG_BLOCK CONFIG_SCSI CONFIG_USB_SUPPORT CONFIG_USB CONFIG_USB_STORAGE CONFIG_MISC_FILESYSTEMS CONFIG_BLK_DEV_SD
     CONFIG_SQUASHFS CONFIG_ISO9660_FS CONFIG_BLK_DEV_LOOP CONFIG_OVERLAY_FS
-    CONFIG_DRM_I915 CONFIG_ATH10K_PCI CONFIG_R8169 CONFIG_SND_HDA_INTEL
+    CONFIG_DRM_I915 CONFIG_NETDEVICES CONFIG_WLAN CONFIG_ATH10K_PCI CONFIG_R8169 CONFIG_SOUND CONFIG_SND_HDA_INTEL
     CONFIG_ZSMALLOC CONFIG_ZRAM CONFIG_DEVTMPFS CONFIG_DEVTMPFS_MOUNT
   )
   for symbol in "${required[@]}"; do

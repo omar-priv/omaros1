@@ -71,13 +71,16 @@ jobs:
           grep -q '^BR2_PACKAGE_BUSYBOX_SHOW_OTHERS=y$' sadim/rootfs/sadim-rootfs.config
           ! grep -q -- '--no-config' sadim/initramfs/rootfs/etc/init.d/S30-weston
           ! grep -q 'BRAVE_EXPECTED_SHA256=""' sadim/initramfs/rootfs/etc/init.d/S45-brave-install
-          grep -Fq 'scripts/config --enable BLOCK --enable SCSI --enable USB_SUPPORT --enable USB --enable USB_STORAGE --enable MISC_FILESYSTEMS' sadim/kernel/build.sh
-          grep -Fq 'CONFIG_BLOCK CONFIG_SCSI CONFIG_USB_SUPPORT CONFIG_USB CONFIG_USB_STORAGE CONFIG_MISC_FILESYSTEMS' sadim/kernel/build.sh
+          grep -Fq 'scripts/config --enable BLOCK --enable SCSI --enable USB_SUPPORT --enable USB --enable USB_STORAGE --enable MISC_FILESYSTEMS --enable NETDEVICES --enable WLAN --enable SOUND' sadim/kernel/build.sh
+          grep -Fq 'CONFIG_BLOCK CONFIG_SCSI CONFIG_USB_SUPPORT CONFIG_USB CONFIG_USB_STORAGE CONFIG_MISC_FILESYSTEMS CONFIG_NETDEVICES CONFIG_WLAN CONFIG_SOUND' sadim/kernel/build.sh
           grep -Fq 'for symbol in "${required[@]}"; do' sadim/kernel/build.sh
           grep -Fq 'grep -qx "${symbol}=y" .config' sadim/kernel/build.sh
           ! grep -Fq '\${symbol}' sadim/kernel/build.sh
           grep -Fq 'cp .config "$OUT/kernel.config"' sadim/kernel/build.sh
           grep -q '^CONFIG_MISC_FILESYSTEMS=y$' sadim/kernel/fragments/qemu-minimal.config
+          grep -q '^CONFIG_NETDEVICES=y$' sadim/kernel/fragments/qemu-minimal.config
+          grep -q '^CONFIG_WLAN=y$' sadim/kernel/fragments/qemu-minimal.config
+          grep -q '^CONFIG_SOUND=y$' sadim/kernel/fragments/qemu-minimal.config
           grep -q '^CONFIG_SQUASHFS=y$' sadim/kernel/fragments/qemu-minimal.config
           grep -q '^CONFIG_ZRAM=y$' sadim/kernel/fragments/qemu-minimal.config
           grep -q '^CONFIG_ZSMALLOC=y$' sadim/kernel/fragments/qemu-minimal.config
