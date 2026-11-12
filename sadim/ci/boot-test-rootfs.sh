@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Sadim OS — بوابة المراحل 3-8: إقلاع الجذر الحي كاملاً في QEMU
+# Sadim OS — بوابة المراحل 3-9: إقلاع الجذر الحي كاملاً في QEMU
 # المسار: kernel + initramfs (محمّل v0.3) → squashfs على virtio → overlayfs → switch_root
-#         → buildroot init → rcS → جميع الخدمات + واجهة Windows 10-like
-# 성공: العلامات الثمانية ×3 تشغيلات متتالية (مضاد الارتداد):
-#   SADIM-BOOT-OK, SADIM-LIVE-OK, SADIM-ROOTFS-OK, SADIM-NET-OK, SADIM-HW-OK, SADIM-PERF-OK, SADIM-SHELL-OK, SADIM-WIN10-OK
+#         → buildroot init → rcS → جميع الخدمات + واجهة Windows 10-like + تعريفات تلقائية + Administrator + Brave + Wine
+# 성공: العلامات إحدى عشرة ×3 تشغيلات متتالية (مضاد الارتداد):
+#   SADIM-BOOT-OK, SADIM-LIVE-OK, SADIM-ROOTFS-OK, SADIM-NET-OK, SADIM-HW-OK, SADIM-PERF-OK, SADIM-DRIVERS-OK, SADIM-SHELL-OK, SADIM-WIN10-OK, SADIM-ADMIN-OK, SADIM-WINE-OK
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -38,13 +38,16 @@ for i in $(seq 1 $RUNS); do
      && grep -q "SADIM-NET-OK"    "$rlog" \
      && grep -q "SADIM-HW-OK"     "$rlog" \
      && grep -q "SADIM-PERF-OK"   "$rlog" \
+     && grep -q "SADIM-DRIVERS-OK" "$rlog" \
      && grep -q "SADIM-SHELL-OK"  "$rlog" \
-     && grep -q "SADIM-WIN10-OK"  "$rlog"; then
+     && grep -q "SADIM-WIN10-OK"  "$rlog" \
+     && grep -q "SADIM-ADMIN-OK"  "$rlog" \
+     && grep -q "SADIM-WINE-OK"   "$rlog"; then
     ok=$((ok+1))
     cp "$rlog" "$LOG"
   else
     echo "[sadim] run $i FAILED — one or more markers missing"
-    for m in SADIM-BOOT-OK SADIM-LIVE-OK SADIM-ROOTFS-OK SADIM-NET-OK SADIM-HW-OK SADIM-PERF-OK SADIM-SHELL-OK SADIM-WIN10-OK; do
+    for m in SADIM-BOOT-OK SADIM-LIVE-OK SADIM-ROOTFS-OK SADIM-NET-OK SADIM-HW-OK SADIM-PERF-OK SADIM-DRIVERS-OK SADIM-SHELL-OK SADIM-WIN10-OK SADIM-ADMIN-OK SADIM-WINE-OK; do
       grep -q "$m" "$rlog" && echo "  marker $m: PRESENT" || echo "  marker $m: MISSING"
     done
     cp "$rlog" "$LOG"
@@ -53,7 +56,7 @@ done
 
 if [ "$ok" -eq "$RUNS" ]; then
   echo "=============================================================="
-  echo "  ROOTFS BOOT TEST PASSED — all 8 markers x3 (v0.2-daily Windows 10 UI)"
+  echo "  ROOTFS BOOT TEST PASSED — all 11 markers x3 (v0.2-daily Windows 10 UI)"
   echo "=============================================================="
   exit 0
 else

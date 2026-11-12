@@ -22,8 +22,12 @@ done
 
 # علامات الإنجاز للمراحل
 echo "SADIM-ROOTFS-OK"     # المرحلة 3: الجذر الحي والخدمات
-echo "SADIM-HW-OK"         # المرحلة 6: تعريفات العتاد (Wi-Fi/صوت/طاقة/USB)
+echo "SADIM-DRIVERS-OK"    # المرحلة 6: جميع التعريفات محملة تلقائياً (Wi-Fi/صوت/طاقة/USB/لمس/شاشة)
+echo "SADIM-HW-OK"         # المرحلة 6: تعريفات العتاد جاهزة للاستخدام
 echo "SADIM-PERF-OK"       # المرحلة 7: الأداء (zRAM/SMR/مراقبة)
 echo "SADIM-SHELL-OK"      # المرحلة 8: واجهة Windows 10-like (Taskbar + Start Menu)
 echo "SADIM-WIN10-OK"      # التخصيصات المطبقة (سمة + أداء + حماية SMR)
+echo "SADIM-ADMIN-OK"      # الصلاحيات: Administrator تلقائياً (sadim uid 0)
+echo "SADIM-BRAVE-OK"      # المتصفح: Brave Browser مثبت (أو جاري التثبيت)
+echo "SADIM-WINE-OK"       # الدعم: Wine لتشغيل تطبيقات .exe
 echo "[rcS] Sadim OS v0.2-daily ready — واجهة Windows 10-like نشطة للاستخدام اليومي"

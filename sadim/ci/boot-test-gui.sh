@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Sadim OS — بوابة المراحل 4-8: اختبار الواجهة الرسومية + العتاد + الأداء + واجهة Windows 10 في QEMU
+# Sadim OS — بوابة المراحل 4-9: اختبار الواجهة الرسومية + العتاد + الأداء + واجهة Windows 10 + تعريفات تلقائية + Administrator + Brave + Wine في QEMU
 # المسار: kernel + initramfs v0.3 → squashfs (virtio) → overlayfs → switch_root
 #         → buildroot init → seatd → weston (DRM+pixman على virtio-gpu)
 #         → screendump عبر QMP للتحقق من بكسلات فعلية
-# 성공: العلامات التسعة ×3 تشغيلات متتالية:
-#   BOOT, LIVE, ROOTFS, NET, GUI, HW, PERF, SHELL, WIN10
+# 성공: العلامات إحدى عشرة ×3 تشغيلات متتالية:
+#   BOOT, LIVE, ROOTFS, NET, GUI, HW, PERF, DRIVERS, SHELL, WIN10, ADMIN, WINE
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -83,12 +83,19 @@ for i in $(seq 1 $RUNS); do
      && grep -q "SADIM-LIVE-OK"   "$rlog" \
      && grep -q "SADIM-ROOTFS-OK" "$rlog" \
      && grep -q "SADIM-NET-OK"    "$rlog" \
+     && grep -q "SADIM-DRIVERS-OK" "$rlog" \
+     && grep -q "SADIM-HW-OK"     "$rlog" \
+     && grep -q "SADIM-PERF-OK"   "$rlog" \
+     && grep -q "SADIM-SHELL-OK"  "$rlog" \
+     && grep -q "SADIM-WIN10-OK"  "$rlog" \
+     && grep -q "SADIM-ADMIN-OK"  "$rlog" \
+     && grep -q "SADIM-WINE-OK"   "$rlog" \
      && [ "$gui_ok" -eq 1 ]; then
     ok=$((ok+1))
     cp "$rlog" "$LOG"
   else
     echo "[sadim] run $i FAILED — one or more markers missing"
-    for m in SADIM-BOOT-OK SADIM-LIVE-OK SADIM-ROOTFS-OK SADIM-NET-OK SADIM-GUI-OK SADIM-HW-OK SADIM-PERF-OK SADIM-SHELL-OK SADIM-WIN10-OK; do
+    for m in SADIM-BOOT-OK SADIM-LIVE-OK SADIM-ROOTFS-OK SADIM-NET-OK SADIM-GUI-OK SADIM-HW-OK SADIM-PERF-OK SADIM-DRIVERS-OK SADIM-SHELL-OK SADIM-WIN10-OK SADIM-ADMIN-OK SADIM-WINE-OK; do
       grep -q "$m" "$rlog" 2>/dev/null && echo "  marker $m: PRESENT" || echo "  marker $m: MISSING"
     done
     cp "$rlog" "$LOG"
@@ -97,7 +104,7 @@ done
 
 if [ "$ok" -eq "$RUNS" ]; then
   echo "============================================================"
-  echo "  GUI BOOT TEST PASSED — all 9 markers x3 (v0.2-daily Windows 10 UI)"
+  echo "  GUI BOOT TEST PASSED — all 12 markers x3 (v0.2-daily Windows 10 UI)"
   echo "============================================================"
   exit 0
 else

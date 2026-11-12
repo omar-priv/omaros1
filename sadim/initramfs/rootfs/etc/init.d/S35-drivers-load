@@ -1,0 +1,85 @@
+#!/bin/sh
+# Sadim OS — تحميل جميع التعريفات تلقائياً عند الإقلاع (مرحلة 6+)
+# يُحمل جميع تعريفات العتاد الحقيقي تلقائياً بدون تدخل المستخدم
+# Acer E5-576G: Wi-Fi، صوت، بطارية، USB، لمس، شاشة، إيثرنت
+
+set -u
+
+log() { echo "[drivers] $*"; }
+
+load_driver() {
+  local drv="$1"
+  if modprobe "$drv" 2>/dev/null; then
+    log "تم تحميل تعريف: $drv"
+  else
+    log "WARN: تعذر تحميل تعريف: $drv (قد لا يكون مطلوباً لهذا العتاد)"
+  fi
+}
+
+start_drivers() {
+  log "بدء تحميل جميع تعريفات العتاد تلقائياً…"
+
+  # 1. تعريفات الشاشة والعرض
+  load_driver i915           # Intel HD 620
+  load_driver drm_kms_helper
+  load_driver fbcon
+
+  # 2. تعريفات الشبكة
+  load_driver r8169          # Realtek Ethernet
+  load_driver ath10k_pci     # Wi-Fi QCA9377
+  load_driver mac80211
+  load_driver cfg80211
+
+  # 3. تعريفات الصوت
+  load_driver snd-hda-intel
+  load_driver snd-hda-codec-realtek
+  load_driver snd-hda-codec-hdmi
+
+  # 4. تعريفات الطاقة والبطارية
+  load_driver battery
+  load_driver ac
+  load_driver acpi_battery
+  load_driver thermal
+  load_driver hwmon
+
+  # 5. تعريفات USB 2.0 (للفلاشة والأجهزة الخارجية)
+  load_driver usb-storage
+  load_driver uas
+  load_driver ohci-hcd
+  load_driver ehci-hcd
+  load_driver xhci-hcd
+
+  # 6. تعريفات لمس اللوحة واللوحة المفاتيح
+  load_driver psmouse
+  load_driver synaptics
+  load_driver elantech
+  load_driver atkbd
+  load_driver i8042
+
+  # 7. تعريفات أنظمة الملفات (دعم قراءة أقسام Windows NTFS/FAT)
+  load_driver ntfs
+  load_driver fat
+  load_driver vfat
+
+  # 8. تعريفات التشفير والأمان
+  load_driver aes
+  load_driver sha256
+  load_driver hmac
+
+  log "تم الانتهاء من تحميل جميع التعريفات المتاحة"
+}
+
+stop_drivers() {
+  log "التعريفات لا تحتاج إيقاف (تدخل واحد عند الإقلاع)"
+}
+
+case "$1" in
+  start) start_drivers ;;
+  stop)  stop_drivers ;;
+  restart) stop_drivers; sleep 1; start_drivers ;;
+  status)
+    lsmod 2>/dev/null | head -30 || echo "لا يمكن عرض تعريفات النواة"
+    ;;
+  *) echo "Usage: $0 {start|stop|restart|status}"; exit 1 ;;
+esac
+exit 0

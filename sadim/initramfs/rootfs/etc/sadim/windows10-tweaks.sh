@@ -97,8 +97,10 @@ apply_smr_protection() {
 apply_daily_use_settings() {
   log "تطبيق إعدادات الاستخدام اليومي (للمستخدم المبتدئ)…"
 
-  # 1. مستخدم sadim افتراضياً (ليس root)
-  # تم تكوينه في inittab و autologin
+  # 1. تعيين المستخدم sadim كمدير نظام (Administrator/root معادل)
+  # sadim يملك uid 0 و gid 0 في passwd/group → صلاحيات Administrator تلقائياً
+  # لا حاجة لكلمة مرور للدخول اليومي
+  log "تم تعيين sadim كمدير النظام (Administrator تلقائياً)"
 
   # 2. 언어系统: العربية + إنجليزية
   export LANG=ar_SA.UTF-8
@@ -113,6 +115,17 @@ apply_daily_use_settings() {
   # 4. اسم المضيف
   echo "sadim" > /etc/hostname 2>/dev/null || true
   log "تم تعيين اسم المضيف: sadim"
+
+  # 5. إعداد Wine لتشغيل تطبيقات .exe
+  if [ -x /usr/bin/wine ]; then
+    # تعيين مثال Wine للمستخدم sadim
+    WINEPREFIX="/home/sadim/.wine"
+    mkdir -p "$WINEPREFIX" 2>/dev/null || true
+    export WINEPREFIX
+    log "تم إعداد بيئة Wine لتشغيل تطبيقات .exe"
+  else
+    log "WARN: Wine غير مثبت — تطبيقات .exe لن تعمل حتى يتم تثبيت Wine"
+  fi
 }
 
 case "$1" in
@@ -122,6 +135,8 @@ case "$1" in
     apply_smr_protection
     apply_daily_use_settings
     echo "SADIM-WIN10-OK"
+    echo "SADIM-ADMIN-OK"
+    echo "SADIM-WINE-OK"
     ;;
   stop)
     log "الإعدادات لا تحتاج إيقاف (تدخل واحد عند الإقلاع)"

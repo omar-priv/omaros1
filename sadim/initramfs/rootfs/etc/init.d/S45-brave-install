@@ -1,0 +1,79 @@
+#!/bin/sh
+# Sadim OS — تثبيت متصفح Brave Browser تلقائياً عند الإقلاع الأول
+# يتم تحميل Brave من موقعه الرسمي وتثبيته في /opt/brave
+# لا أدوات خارجية — فقط wget و tar المتوفرة في النظام
+
+set -u
+
+log() { echo "[brave] $*"; }
+
+BRAVE_DIR="/opt/brave"
+BRAVE_BIN="$BRAVE_DIR/brave-browser"
+BRAVE_INSTALLED_FLAG="/var/lib/brave-installed"
+BRAVE_URL="https://github.com/brave/brave-browser/releases/latest/download/brave-browser-linux-x64.zip"
+
+install_brave() {
+  log "بدء تحميل وتثبيت متصفح Brave Browser…"
+
+  # إنشاء مجلد التثبيت
+  mkdir -p "$BRAVE_DIR"
+  mkdir -p /var/lib
+
+  # إذا كان مثبّتاً مسبقاً، لا نعيد التحميل
+  if [ -f "$BRAVE_INSTALLED_FLAG" ] && [ -x "$BRAVE_BIN" ]; then
+    log "Brave Browser مثبت مسبقاً — تخطي التثبيت"
+    return 0
+  fi
+
+  # تحميل Brave Browser
+  log "تحميل Brave Browser من: $BRAVE_URL"
+  if ! wget -q -O /tmp/brave-browser.zip "$BRAVE_URL" 2>/dev/null; then
+    log "ERROR: تعذر تحميل Brave Browser — تحقق من اتصال الإنترنت"
+    log "يمكن تثبيته يدوياً لاحقاً من: https://brave.com/"
+    return 1
+  fi
+
+  log "تم تحميل Brave Browser — جاري الاستخراج…"
+
+  # استخراج الملفات
+  if ! unzip -o /tmp/brave-browser.zip -d "$BRAVE_DIR" 2>/dev/null; then
+    log "ERROR: تعذر استخراج ملف Brave Browser"
+    rm -f /tmp/brave-browser.zip
+    return 1
+  fi
+
+  # جعل الملف التنفيذي قابلاً للتنفيذ
+  chmod +x "$BRAVE_BIN" 2>/dev/null || true
+
+  # إزالة ملف التحميل المؤقت
+  rm -f /tmp/brave-browser.zip
+
+  # إنشاء علامة التثبيت
+  touch "$BRAVE_INSTALLED_FLAG"
+
+  log "تم تثبيت متصفح Brave Browser بنجاح في: $BRAVE_DIR"
+  log "يمكن تشغيله عبر الأمر: $BRAVE_BIN"
+}
+
+start_brave() {
+  install_brave
+}
+
+stop_brave() {
+  log "متصفح Brave لا يحتاج إيقاف (تثبيت واحد)"
+}
+
+case "$1" in
+  start) start_brave ;;
+  stop)  stop_brave ;;
+  restart) stop_brave; sleep 1; start_brave ;;
+  status)
+    if [ -f "$BRAVE_INSTALLED_FLAG" ] && [ -x "$BRAVE_BIN" ]; then
+      echo "Brave Browser: مثبت في $BRAVE_DIR"
+    else
+      echo "Brave Browser: غير مثبت"
+    fi
+    ;;
+  *) echo "Usage: $0 {start|stop|restart|status}"; exit 1 ;;
+esac
+exit 0

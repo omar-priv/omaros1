@@ -1,0 +1,80 @@
+#!/bin/sh
+# Sadim OS — تشغيل تطبيقات Windows (.exe) عبر Wine
+# سكريبت مساعدة لتشغيل ملفات .exe على نظام سديم OS
+# الاستخدام: sadim-wine <ملف.exe> [خيارات]
+
+set -e
+
+WINE_PREFIX="${WINE_PREFIX:-$HOME/.wine}"
+WINE_BIN="${WINE_BIN:-/usr/bin/wine}"
+
+log() { echo "[sadim-wine] $*"; }
+
+# إعداد Wine عند第一运行
+setup_wine() {
+  if [ ! -d "$WINE_PREFIX" ]; then
+    log "إعداد بيئة Wine لأول مرة…"
+    mkdir -p "$WINE_PREFIX"
+    # تشغيل wineboot لإنشاء البنية الأساسية لـ Wine
+    "$WINE_BIN" wineboot --init 2>/dev/null || log "WARN: wineboot قد يحتاج إلى وقت إضافي"
+    log "تم إعداد بيئة Wine في: $WINE_PREFIX"
+  fi
+}
+
+# عرض المساعدة
+show_help() {
+  echo "Sadim OS — تشغيل تطبيقات Windows (.exe)"
+  echo ""
+  echo "الاستخدام: sadim-wine <ملف.exe> [خيارات التطبيق]"
+  echo ""
+  echo "أمثلة:"
+  echo "  sadim-wine /mnt/usb/setup.exe"
+  echo "  sadim-wine /home/sadim/Documents/app.exe /silent"
+  echo ""
+  echo "ملاحظة: يتطلب تثبيت Wine في النظام (مرحلة 9)"
+  exit 0
+}
+
+# المعالجة الرئيسية
+main() {
+  if [ "$1" = "--help" ] || [ "$1" = "-h" ] || [ -z "$1" ]; then
+    show_help
+  fi
+
+  local exe_file="$1"
+  shift
+
+  # التحقق من وجود الملف
+  if [ ! -f "$exe_file" ]; then
+    log "ERROR: الملف غير موجود: $exe_file"
+    exit 1
+  fi
+
+  # التحقق من أن الملف له امتدادية .exe
+  case "$exe_file" in
+    *.exe|*.EXE) ;;
+    *) log "WARN: الملف ليس له امتدادية .exe،但 سأناول المحاولة";;
+  esac
+
+  # التحقق من وجود Wine
+  if [ ! -x "$WINE_BIN" ]; then
+    log "ERROR: Wine غير مثبت في النظام"
+    log "ثبت Wine عبر Buildroot أو اشرح لي لتثبيته"
+    exit 1
+  fi
+
+  # إعداد Wine
+  setup_wine
+
+  # تشغيل التطبيق عبر Wine
+  log "تشغيل التطبيق عبر Wine: $exe_file"
+  log "بيئة Wine: $WINE_PREFIX"
+
+  "$WINE_BIN" "$exe_file" "$@"
+
+  local exit_code=$?
+  log "انتهى التطبيق برمز خروج: $exit_code"
+  exit $exit_code
+}
+
+main "$@"
