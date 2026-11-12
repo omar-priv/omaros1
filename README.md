@@ -4,13 +4,20 @@ Sadim OS is a source-built, x86_64 Live Linux system under development for an Ac
 
 ## Honest current status — 12 November 2026
 
-There is currently **no reviewed ISO download**. The latest attempts have confirmed that the kernel builds successfully (Run #15 produced a 4,469,760-byte bzImage). Buildroot then caught two optional text-shaping packages that were incompatible with this deliberately lean musl profile. Those unused entries were removed; the next full build is running from commit 9655561. Static CI for that commit passed.
+There is **no reviewed ISO download yet**. The latest completed full ISO attempt was Run #17 (ID 43166896881, commit 9655561): the kernel build passed, but the Buildroot root-filesystem stage failed before completion. Initramfs, ISO creation, ISO verification, checksum generation and artifact upload were never reached.
+
+A new full ISO attempt, Run #18 (ID 43202062317, source commit 4871d36), was triggered by the seatd/Weston source fixes. At the last status check it was still building the kernel; no ISO artifact existed yet.
+
+The latest green static CI is Run #64 (ID 43202312525, commit 3f4028c). It checks workflow YAML, shell syntax, executable service modes and repository guards. It is not an ISO build and does not prove that the ISO boots.
+
+A source review found a concrete GUI startup mismatch: the overlay tried to start `/usr/bin/seatd`, but Buildroot's seatd daemon option was not enabled. Weston was scheduled before the package-managed seatd service, and the custom group file lacked the `video` group required by that service. Commit 4871d36 enables the daemon, checks the generated service and video group, and orders startup as S70seatd → S75-weston. A successful full build and runtime verification are still required.
 
 - Repository: https://github.com/omar-priv/omaros1
-- Current build history: https://github.com/omar-priv/omaros1/actions
-- Build policy: the ISO workflow starts automatically after changes under `sadim/**` and remains manually triggerable. It does not cancel an already-running ISO build.
+- Build history: https://github.com/omar-priv/omaros1/actions
+- Latest ISO attempt: https://github.com/omar-priv/omaros1/actions/runs/43202062317
+- The ISO workflow runs automatically after changes under `sadim/**`, can also be started manually, and does not cancel an already-running ISO build.
 
-Do not flash an artifact unless the ISO workflow completes successfully and publishes `sadim.iso`, `sadim.iso.sha256` and `BUILD-REPORT.txt`.
+Do not flash any artifact unless a fresh ISO workflow completes successfully and publishes `sadim.iso`, `sadim.iso.sha256` and `BUILD-REPORT.txt`.
 
 ## What the current base aims to provide
 
@@ -37,12 +44,12 @@ The USB writer will erase the selected USB stick. Use an empty spare stick and v
 
 ## Build and test policy
 
-1. sadim-ci runs static YAML and shell-syntax checks.
-2. The separate ISO workflow builds the kernel, initramfs, Buildroot rootfs and hybrid ISO, then verifies the ISO contents and checksum.
-3. The owner explicitly tests the resulting USB Live image on the Acer. No QEMU test is part of the current acceptance path.
+1. `sadim-ci` runs static YAML and shell-syntax checks.
+2. The separate ISO workflow builds the kernel, Buildroot rootfs, initramfs and hybrid ISO, then verifies boot files, embedded firmware, SquashFS metadata and SHA-256.
+3. The owner explicitly tests the resulting USB Live image on the Acer. The current ISO workflow does not certify real hardware compatibility.
 
-An artifact is publishable only when its workflow is completed successfully and contains sadim.iso, sadim.iso.sha256 and BUILD-REPORT.txt. CI success is not proof of hardware compatibility.
+An artifact is publishable only when its workflow is completed successfully and contains `sadim.iso`, `sadim.iso.sha256` and `BUILD-REPORT.txt`. Static CI success is not proof of an ISO build or hardware compatibility.
 
 ## License and reuse
 
-The project reuses upstream Linux, BusyBox, Buildroot, Weston and other open-source components under their respective licenses. Custom project scripts and configuration are maintained in this repository. See docs/adr/ for architectural decisions and docs/known-issues.md for limitations.
+The project reuses upstream Linux, BusyBox, Buildroot, Weston and other open-source components under their respective licenses. Custom project scripts and configuration are maintained in this repository. See `docs/adr/` and `docs/known-issues.md` for architecture and limitations.
