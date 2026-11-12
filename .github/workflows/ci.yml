@@ -67,6 +67,7 @@ jobs:
         run: |
           ! grep -Eq '^BR2_PACKAGE_(QCA_ATH10K|UPPOWER|CHROMIUM|WINE|ZRAM|TMPFS|PROCPS|VMSTAT|MPSTAT|PS|FREE|DF|DU|IP|IFCONFIG|DROPBEAR_SERVER)=' sadim/rootfs/sadim-rootfs.config
           ! grep -Eq '^BR2_TOOLCHAIN_BUILDROOT_(WCHAR|THREADS_NPTL|CXX)=' sadim/rootfs/sadim-rootfs.config
+          ! grep -Eq '^BR2_PACKAGE_(FRIBIDI|HARFBUZZ)=' sadim/rootfs/sadim-rootfs.config
           grep -q '^BR2_KERNEL_HEADERS_6_12=y$' sadim/rootfs/sadim-rootfs.config
           grep -q '^BR2_PACKAGE_BUSYBOX_SHOW_OTHERS=y$' sadim/rootfs/sadim-rootfs.config
           ! grep -q -- '--no-config' sadim/initramfs/rootfs/etc/init.d/S30-weston
