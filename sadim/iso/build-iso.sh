@@ -18,8 +18,8 @@ cp "$OUT/bzImage" "$ISODIR/boot/vmlinuz-sadim"
 cp "$OUT/initramfs.cpio.gz" "$ISODIR/boot/initramfs-sadim.img"
 cp "$OUT/rootfs.squashfs" "$ISODIR/live/rootfs.squashfs"
 
-KERNEL_RELEASE="$(sed -n 's/^CONFIG_LOCALVERSION="\\(.*\\)"/\\1/p' "$ROOT/kernel/fragments/qemu-minimal.config" | tr -d '\\"')"
-KERNEL_RELEASE="6.12.117${KERNEL_RELEASE:--sadim}"
+LOCALVERSION="$(awk -F '"' '/^CONFIG_LOCALVERSION=/{print $2}' "$ROOT/kernel/fragments/qemu-minimal.config")"
+KERNEL_RELEASE="6.12.117${LOCALVERSION:--sadim}"
 cat > "$ISODIR/sadim/VERSION" <<EOF
 Sadim OS 0.2-daily
 Build: $(date -u +%Y-%m-%dT%H:%M:%SZ)
