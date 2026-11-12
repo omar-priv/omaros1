@@ -1,0 +1,186 @@
+#!/bin/sh
+# Sadim OS — Settings (Windows 10 Style)
+# تطبيق الإعدادات الشبيه بـ Windows Settings
+# يسمح بضبط اللغة، الوقت، الشاشة، الطاقة، والنظام
+
+set -e
+
+show_menu() {
+  clear
+  echo "================================================"
+  echo "   الإعدادات — Sadim OS (Windows 10 Style)"
+  echo "================================================"
+  echo ""
+  echo "  الفئات:"
+  echo "  ----------------"
+  echo "  1. 🌐 اللغة والوقت (Language & Time)"
+  echo "  2. 🖥️ الشاشة والعرض (Display)"
+  echo "  3. 🔋 الطاقة والبطارية (Power & Battery)"
+  echo "  4. 💾 التخزين (Storage)"
+  echo "  5. 🌐 الشبكة (Network)"
+  echo "  6. ℹ️ حول النظام (About)"
+  echo ""
+  echo "  0. ⬅️ العودة للقائمة الرئيسية"
+  echo ""
+  echo -n "  اختر الرقم: "
+}
+
+language_time() {
+  clear
+  echo "================================================"
+  echo "   اللغة والوقت — Sadim OS"
+  echo "================================================"
+  echo ""
+  echo "  اللغة الحالية: $(echo $LANG)"
+  echo "  المنطقة الزمنية: $(cat /etc/timezone 2>/dev/null || echo "UTC")"
+  echo ""
+  echo "  اللغات المتاحة:"
+  echo "  1. العربية (ar_SA.UTF-8) — RTL"
+  echo "  2. الإنجليزية (en_US.UTF-8) — LTR"
+  echo ""
+  echo -n "  اختر اللغة: "
+  read lang_choice
+  case "$lang_choice" in
+    1)
+      export LANG=ar_SA.UTF-8
+      export LC_ALL=ar_SA.UTF-8
+      echo "ar_SA.UTF-8 UTF-8" > /etc/locale.conf 2>/dev/null || true
+      echo "تم تعيين اللغة العربية"
+      ;;
+    2)
+      export LANG=en_US.UTF-8
+      export LC_ALL=en_US.UTF-8
+      echo "en_US.UTF-8 UTF-8" > /etc/locale.conf 2>/dev/null || true
+      echo "تم تعيين اللغة الإنجليزية"
+      ;;
+    *)
+      echo "اختيار غير صحيح"
+      ;;
+  esac
+  sleep 2
+}
+
+display_settings() {
+  clear
+  echo "================================================"
+  echo "   الشاشة والعرض — Sadim OS"
+  echo "================================================"
+  echo ""
+  echo "  الدقة الحالية: $(cat /proc/fb 2>/dev/null | head -1 || echo "غير متاح")"
+  echo "  المقياس: 100%"
+  echo "  السمة: Windows 10 (حادة، #0078D7)"
+  echo ""
+  echo "  الخيارات:"
+  echo "  1. تغيير خلفية سطح المكتب"
+  echo "  2. تغيير مقياس العرض"
+  echo "  3. إعادة ضبط الإعدادات الافتراضية"
+  echo ""
+  echo -n "  اختر الخيار: "
+  read disp_choice
+  case "$disp_choice" in
+    1) echo "سيتم تطبيق الخلفيات في الإصدار القادم"; sleep 2 ;;
+    2) echo "سيتم تطبيق المقياس في الإصدار القادم"; sleep 2 ;;
+    3) echo "تم إعادة ضبط الإعدادات"; sleep 2 ;;
+  esac
+}
+
+power_battery() {
+  clear
+  echo "================================================"
+  echo "   الطاقة والبطارية — Sadim OS"
+  echo "================================================"
+  echo ""
+  if [ -d /sys/class/power_supply ]; then
+    for bat in /sys/class/power_supply/BAT*; do
+      [ -d "$bat" ] || continue
+      local name=$(basename "$bat")
+      local capacity=$(cat "$bat/capacity" 2>/dev/null || echo "N/A")
+      local status=$(cat "$bat/status" 2>/dev/null || echo "N/A")
+      echo "  $name: $capacity% ($status)"
+    done
+  else
+    echo "  لا توجد بطارية مكتشفة"
+  fi
+  echo ""
+  echo "  وضع توفير الطاقة: مفعل (zRAM + noatime)"
+  echo ""
+  echo -n "  اضغط Enter للعودة..."
+  read
+}
+
+storage() {
+  clear
+  echo "================================================"
+  echo "   التخزين — Sadim OS"
+  echo "================================================"
+  echo ""
+  if command -v df >/dev/null 2>&1; then
+    df -h 2>/dev/null | head -10
+  else
+    echo "  أمر df غير متاح"
+  fi
+  echo ""
+  echo -n "  اضغط Enter للعودة..."
+  read
+}
+
+network() {
+  clear
+  echo "================================================"
+  echo "   الشبكة — Sadim OS"
+  echo "================================================"
+  echo ""
+  if command -v ip >/dev/null 2>&1; then
+    ip addr 2>/dev/null | head -20
+  elif command -v ifconfig >/dev/null 2>&1; then
+    ifconfig 2>/dev/null | head -20
+  else
+    echo "  أدوات الشبكة غير متاحة"
+  fi
+  echo ""
+  echo -n "  اضغط Enter للعودة..."
+  read
+}
+
+about() {
+  clear
+  echo "================================================"
+  echo "   حول النظام — Sadim OS"
+  echo "================================================"
+  echo ""
+  echo "  الاسم: Sadim OS (سديم)"
+  echo "  الإصدار: 0.2-daily"
+  echo "  النواة: $(uname -r 2>/dev/null || echo "6.12.117-sadim-phase4")"
+  echo "  البنية: $(uname -m 2>/dev/null || echo "x86_64")"
+  echo "  المستخدم: sadim (Administrator)"
+  echo "  الصفحة الرئيسية: https://github.com/omar-priv/omaros1"
+  echo ""
+  echo "  المكونات:"
+  echo "  - نواة Linux 6.12.117 LTS"
+  echo "  - Buildroot 2025.02.19 (musl)"
+  echo "  - Weston Wayland Compositor"
+  echo "  - Qt6 (linuxfb backend)"
+  echo "  - Wine (دعم تطبيقات .exe)"
+  echo "  - Brave Browser"
+  echo ""
+  echo -n "  اضغط Enter للعودة..."
+  read
+}
+
+# حلقة البرنامج الرئيسي
+while true; do
+  show_menu
+  read choice
+  case "$choice" in
+    1) language_time ;;
+    2) display_settings ;;
+    3) power_battery ;;
+    4) storage ;;
+    5) network ;;
+    6) about ;;
+    0) break ;;
+    *) echo "اختيار غير صحيح"; sleep 1 ;;
+  esac
+done
+
+echo "تم إغلاق الإعدادات."

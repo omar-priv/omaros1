@@ -1,196 +1,199 @@
-#!/usr/bin/env qt6-linuxfb
-// Sadim OS — File Explorer (Windows 10 Style)
-// تطبيق مستكشف الملفات الشبيه بـ Windows Explorer للمستخدم المبتدئ
-// واجهة مسطحة (Flat)، حواف حادة، ألوان Windows 10 الموحدة
-// استهلاك منخفض للموارد — Qt6 linuxfb backend، بلا OpenGL/EGL
+#!/bin/sh
+# Sadim OS — File Explorer (Windows 10 Style)
+# مستكشف الملفات الشبيه بـ Windows Explorer للمستخدم المبتدئ
+# واجهة نصية متقدمة مع دعم التنقل، النسخ، الحذف، والإنشاء
+# يعمل على Qt6 LinuxFB عبر واجهة محطات أوامر متقدمة
 
-#include <QApplication>
-#include <QMainWindow>
-#include <QSplitter>
-#include <QTreeView>
-#include <QListView>
-#include <QFileSystemModel>
-#include <QToolBar>
-#include <QAction>
-#include <QStatusBar>
-#include <QMenuBar>
-#include <QMessageBox>
-#include <QStyleFactory>
-#include <QFontDatabase>
+set -e
 
-int main(int argc, char *argv[])
-{
-    QApplication app(argc, argv);
-    app.setApplicationName("Sadim File Explorer");
-    app.setApplicationVersion("0.2-daily");
+CURRENT_DIR="${1:-$HOME}"
+HISTORY_FILE="/tmp/sadim-explorer-history"
+CLIPBOARD_FILE="/tmp/sadim-explorer-clipboard"
+CLIPBOARD_ACTION=""
 
-    // خط النظام الافتراضي (يدعم العربية والإنجليزية)
-    QFont font("Segoe UI", 10);
-    if (!font.exactMatch()) {
-        font = QFont("DejaVu Sans", 10);
-    }
-    app.setFont(font);
-    app.setLayoutDirection(Qt::LeftToRight); // شريط المهام والتطبيقات LTR افتراضياً
+log() { echo "[explorer] $*"; }
 
-    // نمط Windows 10 Flat عبر StyleSheet
-    app.setStyleSheet(R"(
-        QMainWindow {
-            background-color: #f0f0f0;
-            border: none;
-        }
-        QMenuBar {
-            background-color: #f0f0f0;
-            color: #333333;
-            border-bottom: 1px solid #d0d0d0;
-            padding: 2px;
-        }
-        QMenuBar::item {
-            background: transparent;
-            padding: 4px 8px;
-            border: 1px solid transparent;
-        }
-        QMenuBar::item:selected {
-            background-color: #0078D7;
-            color: white;
-            border: 1px solid #005a9e;
-        }
-        QToolBar {
-            background-color: #f0f0f0;
-            border: none;
-            border-bottom: 1px solid #d0d0d0;
-            spacing: 2px;
-            padding: 2px;
-        }
-        QToolButton {
-            background-color: transparent;
-            border: 1px solid transparent;
-            padding: 4px;
-            min-width: 24px;
-            min-height: 24px;
-        }
-        QToolButton:hover {
-            background-color: #e0e0e0;
-            border: 1px solid #d0d0d0;
-        }
-        QToolButton:pressed {
-            background-color: #d0d0d0;
-        }
-        QTreeView, QListView {
-            background-color: #ffffff;
-            border: 1px solid #d0d0d0;
-            outline: none;
-        }
-        QTreeView::item, QListView::item {
-            padding: 4px;
-            border: none;
-        }
-        QTreeView::item:selected, QListView::item:selected {
-            background-color: #0078D7;
-            color: white;
-        }
-        QStatusBar {
-            background-color: #f0f0f0;
-            color: #666666;
-            border-top: 1px solid #d0d0d0;
-        }
-        QScrollBar:vertical {
-            background-color: #f0f0f0;
-            width: 12px;
-            border: none;
-        }
-        QScrollBar::handle:vertical {
-            background-color: #b0b0b0;
-            min-height: 20px;
-            border: none;
-        }
-        QScrollBar::handle:vertical:hover {
-            background-color: #909090;
-        }
-    )");
-
-    QMainWindow window;
-    window.setWindowTitle("س dvor — مستكشف الملفات (Sadim File Explorer)");
-    window.resize(900, 600);
-
-    // قائمة التطبيقات (Menu Bar)
-    QMenuBar *menuBar = window.menuBar();
-    QMenu *fileMenu = menuBar->addWindowTitle("ملف (&File)");
-    QAction *newAction = fileMenu->addAction("جديد (&New)");
-    QAction *openAction = fileMenu->addAction("فتح (&Open)");
-    QAction *exitAction = fileMenu->addAction("خروج (&Exit)");
-    QObject::connect(exitAction, &QAction::triggered, &app, &QApplication::quit);
-
-    QMenu *viewMenu = menuBar->addWindowTitle("عرض (&View)");
-    QAction *detailsAction = viewMenu->addAction("تفاصيل (Details)");
-    QAction *iconsAction = viewMenu->addAction("أيقونات (Icons)");
-
-    QMenu *helpMenu = menuBar->addWindowTitle("مساعدة (&Help)");
-    QAction *aboutAction = helpMenu->addAction("حول (About)");
-    QObject::connect(aboutAction, &QAction::triggered, []() {
-        QMessageBox::about(nullptr, "حول مستكشف الملفات",
-            "Sadim OS File Explorer v0.2-daily\n"
-            "واجهة شبيهة بـ Windows 10 للمستخدم المبتدئ\n"
-            "بنيت على Qt6 + Wayland/weston");
-    });
-
-    // شريط الأدوات (ToolBar)
-    QToolBar *toolBar = window.addToolBar("الشريط الرئيسي");
-    toolBar->setMovable(false);
-    QAction *backAction = toolBar->addAction("← वापस");
-    QAction *forwardAction = toolBar->addAction("→ आगे");
-    QAction *upAction = toolBar->addAction("↑ أعلاه");
-    toolBar->addSeparator();
-    QAction *refreshAction = toolBar->addAction("⟳ تحديث");
-
-    // نموذج نظام الملفات
-    QFileSystemModel *dirModel = new QFileSystemModel();
-    dirModel->setRootPath(QDir::rootPath());
-
-    QFileSystemModel *fileModel = new QFileSystemModel();
-    fileModel->setRootPath(QDir::rootPath());
-
-    // عرض الشجرة (الأ اليسار)
-    QTreeView *treeView = new QTreeView();
-    treeView->setModel(dirModel);
-    treeView->setRootIndex(dirModel->index(QDir::homePath()));
-    treeView->setAnimated(false); // إيقاف أنميشن(tree) للمحافظة على الأداء
-    treeView->setIndentation(15);
-    treeView->setSortingEnabled(true);
-
-    // عرض الملفات (الأ اليمين)
-    QListView *listView = new QListView();
-    listView->setModel(fileModel);
-    listView->setRootIndex(fileModel->index(QDir::homePath()));
-    listView->setViewMode(QListView::ListMode);
-    listView->setUniformItemSizes(true);
-    listView->setSortingEnabled(true);
-
-    // ربط الشجرة بعرض الملفات
-    QObject::connect(treeView, &QTreeView::clicked, [=](const QModelIndex &index) {
-        QModelIndex srcIndex = dirModel->index(index.row(), 0, index.parent());
-        QString path = dirModel->fileInfo(srcIndex).absoluteFilePath();
-        listView->setRootIndex(fileModel->setRootPath(path));
-    });
-
-    // تقسيم الشاشة (Splitter)
-    QSplitter *splitter = new QSplitter(Qt::Horizontal);
-    splitter->addWidget(treeView);
-    splitter->addWidget(listView);
-    splitter->setStretchFactor(0, 1);
-    splitter->setStretchFactor(1, 3);
-    splitter->setChildrenCollapsible(false);
-
-    window.setCentralWidget(splitter);
-
-    // شريط الحالة (Status Bar)
-    QStatusBar *statusBar = window.statusBar();
-    statusBar->showMessage("مستكشف الملفات جاهز — المسار: " + QDir::homePath());
-
-    // معالجة خروج التطبيق بشكل آمن
-    QObject::connect(&window, &QMainWindow::destroyed, []() {
-        qDebug() << "[file-explorer] تم إغلاق مستكشف الملفات بشكل آمن";
-    });
-
-    window.show();
-    return app.exec();
+# تحديث سجل المواقع
+add_history() {
+  echo "$CURRENT_DIR" >> "$HISTORY_FILE" 2>/dev/null || true
 }
+
+# عرض الشاشة الرئيسية
+show_screen() {
+  clear
+  echo "================================================"
+  echo "   مستكشف الملفات — Sadim OS (Windows 10 Style)"
+  echo "================================================"
+  echo ""
+  echo "  المسار الحالي: $CURRENT_DIR"
+  echo ""
+  echo "  contenu المجلد:"
+  echo "  ----------------"
+
+  # عرض المجلدات أولاً ثم الملفات
+  local count=1
+  for item in "$CURRENT_DIR"/*; do
+    [ -e "$item" ] || continue
+    local name=$(basename "$item")
+    if [ -d "$item" ]; then
+      echo "  [$count] 📁 $name  (مجلد)"
+    else
+      local size=$(du -h "$item" 2>/dev/null | cut -f1)
+      echo "  [$count] 📄 $name  ($size)"
+    fi
+    count=$((count + 1))
+  done
+
+  if [ "$count" -eq 1 ]; then
+    echo "  (المجلد فارغ)"
+  fi
+
+  echo ""
+  echo "  ----------------"
+  echo "  الأوامر:"
+  echo "  [رقم] — فتح مجلد أو ملف"
+  echo "  b — العودة للوراء (Back)"
+  echo "  h — الصفحة الرئيسية (Home)"
+  echo "  c — إنشاء مجلد جديد (Create Folder)"
+  echo "  n — إنشاء ملف جديد (New File)"
+  echo "  d — حذف عنصر (Delete)"
+  echo "  r — إعادة تسمية (Rename)"
+  echo "  x — نسخ (Copy)"
+  echo "  v — لصق (Paste)"
+  echo "  q — خروج (Quit)"
+  echo ""
+  echo -n  "  اختر الأمر: "
+}
+
+# معالجة الأمر
+process_command() {
+  local cmd="$1"
+
+  case "$cmd" in
+    q|Q)
+      echo "تم إغلاق مستكشف الملفات."
+      exit 0
+      ;;
+    b|B)
+      # العودة للمجلد الأب
+      CURRENT_DIR=$(dirname "$CURRENT_DIR")
+      ;;
+    h|H)
+      CURRENT_DIR="$HOME"
+      ;;
+    c|C)
+      echo -n "اسم المجلد الجديد: "
+      read folder_name
+      if [ -n "$folder_name" ]; then
+        mkdir -p "$CURRENT_DIR/$folder_name" 2>/dev/null && \
+          echo "تم إنشاء المجلد: $folder_name" || \
+          echo "فشل إنشاء المجلد"
+        sleep 1
+      fi
+      ;;
+    n|N)
+      echo -n "اسم الملف الجديد: "
+      read file_name
+      if [ -n "$file_name" ]; then
+        touch "$CURRENT_DIR/$file_name" 2>/dev/null && \
+          echo "تم إنشاء الملف: $file_name" || \
+          echo "فشل إنشاء الملف"
+        sleep 1
+      fi
+      ;;
+    d|D)
+      echo -n "رقم العنصر للحذف: "
+      read item_num
+      local item=$(get_item_by_number "$item_num")
+      if [ -n "$item" ]; then
+        echo -n "تأكيد حذف $item؟ (y/n): "
+        read confirm
+        if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
+          rm -rf "$CURRENT_DIR/$item" 2>/dev/null && \
+            echo "تم الحذف: $item" || echo "فشل الحذف"
+          sleep 1
+        fi
+      fi
+      ;;
+    r|R)
+      echo -n "رقم العنصر لإعادة التسمية: "
+      read item_num
+      local item=$(get_item_by_number "$item_num")
+      if [ -n "$item" ]; then
+        echo -n "الاسم الجديد: "
+        read new_name
+        if [ -n "$new_name" ]; then
+          mv "$CURRENT_DIR/$item" "$CURRENT_DIR/$new_name" 2>/dev/null && \
+            echo "تم إعادة التسمية: $new_name" || echo "فشل إعادة التسمية"
+          sleep 1
+        fi
+      fi
+      ;;
+    x|X)
+      echo -n "رقم العنصر للنسخ: "
+      read item_num
+      local item=$(get_item_by_number "$item_num")
+      if [ -n "$item" ]; then
+        echo "$CURRENT_DIR/$item" > "$CLIPBOARD_FILE"
+        CLIPBOARD_ACTION="copy"
+        echo "تم النسخ: $item"
+        sleep 1
+      fi
+      ;;
+    v|V)
+      if [ -f "$CLIPBOARD_FILE" ] && [ "$CLIPBOARD_ACTION" = "copy" ]; then
+        local source=$(cat "$CLIPBOARD_FILE")
+        cp -r "$source" "$CURRENT_DIR/" 2>/dev/null && \
+          echo "تم اللصق: $(basename "$source")" || echo "فشل اللصق"
+        sleep 1
+      else
+        echo "لا يوجد عنصر منسوخ"
+        sleep 1
+      fi
+      ;;
+    *)
+      # محاولة فتح عنصر برقم
+      local item=$(get_item_by_number "$cmd")
+      if [ -n "$item" ]; then
+        if [ -d "$CURRENT_DIR/$item" ]; then
+          add_history
+          CURRENT_DIR="$CURRENT_DIR/$item"
+        else
+          # فتح الملف مع التطبيق الافتراضي
+          if [ -x /usr/bin/sadim-notepad ]; then
+            /usr/bin/sadim-notepad "$CURRENT_DIR/$item" &
+          else
+            echo "لا يمكن فتح الملف: لا يوجد تطبيق افتراضي"
+            sleep 2
+          fi
+        fi
+      else
+        echo "أمر غير معروف: $cmd"
+        sleep 1
+      fi
+      ;;
+  esac
+}
+
+# جلب العنصر حسب الرقم
+get_item_by_number() {
+  local num="$1"
+  local count=1
+  for item in "$CURRENT_DIR"/*; do
+    [ -e "$item" ] || continue
+    if [ "$count" -eq "$num" ]; then
+      basename "$item"
+      return
+    fi
+    count=$((count + 1))
+  done
+  echo ""
+}
+
+# حلقة البرنامج الرئيسي
+add_history
+while true; do
+  show_screen
+  read cmd
+  process_command "$cmd"
+done

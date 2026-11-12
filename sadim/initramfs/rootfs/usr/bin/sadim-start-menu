@@ -1,172 +1,137 @@
-#!/usr/bin/env qt6-linuxfb
-// Sadim OS — Start Menu (Windows 10 Style)
-// قائمة 시작 الشبيهة بـ Windows 10 Start Menu
-// واجهة مسطحة، حواف حادة، تطبيقات أساسية مرتبة
+#!/bin/sh
+# Sadim OS — Start Menu (Windows 10 Style)
+# قائمة ابدأ الشبيهة بـ Windows 10 Start Menu
+# تعرض التطبيقات الأساسية وتسهل تشغيلها
 
-#include <QApplication>
-#include <QWidget>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QPushButton>
-#include <QLabel>
-#include <QFrame>
-#include <QFontDatabase>
-#include <QDesktopWidget>
+set -e
 
-class StartMenu : public QWidget {
-    Q_OBJECT
-public:
-    StartMenu() {
-        setWindowFlags(Qt::FramelessWindowHint | Qt::Popup | Qt::WindowStaysOnTopHint);
-        setFixedSize(350, 500);
-        setAttribute(Qt::WA_TranslucentBackground, false);
-
-        // Windows 10 Start Menu StyleSheet
-        setStyleSheet(R"(
-            QWidget#startMenu {
-                background-color: #f0f0f0;
-                border: 1px solid #d0d0d0;
-                border-radius: 0px; /* Windows 10 Sharp Corners */
-            }
-            QLabel#userLabel {
-                color: #333333;
-                font-size: 14px;
-                font-weight: bold;
-                padding: 10px;
-                background-color: #e0e0e0;
-                border-bottom: 1px solid #d0d0d0;
-            }
-            QLabel#appsLabel {
-                color: #666666;
-                font-size: 12px;
-                padding: 5px 10px;
-                background-color: #f0f0f0;
-                border-bottom: 1px solid #d0d0d0;
-            }
-            QPushButton {
-                background-color: #f0f0f0;
-                color: #333333;
-                border: none;
-                border-bottom: 1px solid #e0e0e0;
-                text-align: left;
-                padding: 10px;
-                font-size: 13px;
-                min-height: 40px;
-            }
-            QPushButton:hover {
-                background-color: #0078D7;
-                color: white;
-            }
-            QPushButton:pressed {
-                background-color: #005a9e;
-            }
-            QPushButton#powerBtn {
-                background-color: #f0f0f0;
-                color: #e53935;
-                border-top: 1px solid #d0d0d0;
-                text-align: left;
-                padding: 10px;
-                font-size: 13px;
-                min-height: 40px;
-            }
-            QPushButton#powerBtn:hover {
-                background-color: #ffe0e0;
-                color: #c62828;
-            }
-        )");
-
-        QVBoxLayout *mainLayout = new QVBoxLayout(this);
-        mainLayout->setContentsMargins(0, 0, 0, 0);
-        mainLayout->setSpacing(0);
-
-        // قسم المستخدم (مثل Windows 10)
-        QLabel *userLabel = new QLabel("sadim — المستخدم");
-        userLabel->setObjectName("userLabel");
-        mainLayout->addWidget(userLabel);
-
-        // قسم التطبيقات الأساسية
-        QLabel *appsLabel = new QLabel("التطبيقات");
-        appsLabel->setObjectName("appsLabel");
-        mainLayout->addWidget(appsLabel);
-
-        const QStringList appNames = {
-            "مستكشف الملفات (File Explorer)",
-            "المفكرة (Notepad)",
-            "الحاسبة (Calculator)",
-            "مدير المهام (Task Manager)",
-            "الإعدادات (Settings)",
-            "متصفح الويب (Browser)",
-            "إدارة الملفات (File Manager)",
-            "محطة الأوامر (Terminal)"
-        };
-
-        for (const QString &appName : appNames) {
-            QPushButton *btn = new QPushButton(appName);
-            btn->setMinimumHeight(40);
-            connect(btn, &QPushButton::clicked, this, [this, appName]() {
-                launchApp(appName);
-            });
-            mainLayout->addWidget(btn);
-        }
-
-        mainLayout->addStretch();
-
-        // زر الطاقة (مثل Windows 10)
-        QPushButton *powerBtn = new QPushButton("إيقاف التشغيل (Power)");
-        powerBtn->setObjectName("powerBtn");
-        connect(powerBtn, &QPushButton::clicked, this, &StartMenu::onPower);
-        mainLayout->addWidget(powerBtn);
-
-        // إغلاق القائمة عند النقر خارجها
-        installEventFilter(this);
-    }
-
-protected:
-    bool eventFilter(QObject *obj, QEvent *event) override {
-        if (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::KeyPress) {
-            hide();
-            return true;
-        }
-        return QWidget::eventFilter(obj, event);
-    }
-
-private slots:
-    void launchApp(const QString &appName) {
-        hide();
-        if (appName.contains("مستكشف الملفات")) {
-            QProcess::startDetached("/usr/bin/sadim-file-explorer");
-        } else if (appName.contains("المفكرة")) {
-            QProcess::startDetached("/usr/bin/sadim-notepad");
-        } else if (appName.contains("الحاسبة")) {
-            QProcess::startDetached("/usr/bin/sadim-calculator");
-        } else if (appName.contains("مدير المهام")) {
-            QProcess::startDetached("/usr/bin/sadim-task-manager");
-        } else if (appName.contains("محطة الأوامر")) {
-            QProcess::startDetached("/bin/sh");
-        } else {
-            qDebug() << "[start-menu] تطبيق غير جاهز بعد:" << appName;
-        }
-    }
-
-    void onPower() {
-        hide();
-        QProcess::startDetached("poweroff");
-    }
-
-#include "moc_startmenu.cpp"
-};
-
-int main(int argc, char *argv[])
-{
-    QApplication app(argc, argv);
-    app.setApplicationName("Sadim Start Menu");
-    app.setApplicationVersion("0.2-daily");
-
-    QFont font("Segoe UI", 10);
-    if (!font.exactMatch()) font = QFont("DejaVu Sans", 10);
-    app.setFont(font);
-
-    StartMenu menu;
-    menu.show();
-    return app.exec();
+show_menu() {
+  clear
+  echo "================================================"
+  echo "   قائمة ابدأ — Sadim OS (Windows 10 Style)"
+  echo "================================================"
+  echo ""
+  echo "  المستخدم: sadim (Administrator)"
+  echo ""
+  echo "  التطبيقات:"
+  echo "  ----------------"
+  echo "  1. 📁 مستكشف الملفات (File Explorer)"
+  echo "  2. 📝 المفكرة (Notepad)"
+  echo "  3. 🧮 الحاسبة (Calculator)"
+  echo "  4. 📊 مدير المهام (Task Manager)"
+  echo "  5. ⚙️ الإعدادات (Settings)"
+  echo "  6. 🖥️ محطة الأوامر (Terminal)"
+  echo "  7. 🌐 متصفح الويب (Browser)"
+  echo "  8. 🍷 تشغيل تطبيق Windows (.exe) via Wine"
+  echo ""
+  echo "  ------------------"
+  echo "  9. ⏻ إيقاف التشغيل (Shutdown)"
+  echo "  0. 🔄 إعادة التشغيل (Restart)"
+  echo ""
+  echo -n "  اختر الرقم: "
 }
+
+launch_app() {
+  local choice="$1"
+
+  case "$choice" in
+    1)
+      if [ -x /usr/bin/sadim-file-explorer ]; then
+        /usr/bin/sadim-file-explorer
+      else
+        echo "مستكشف الملفات غير متوفر"
+        sleep 2
+      fi
+      ;;
+    2)
+      if [ -x /usr/bin/sadim-notepad ]; then
+        /usr/bin/sadim-notepad
+      else
+        echo "المفكرة غير متوفرة"
+        sleep 2
+      fi
+      ;;
+    3)
+      if [ -x /usr/bin/sadim-calculator ]; then
+        /usr/bin/sadim-calculator
+      else
+        echo "الحاسبة غير متوفرة"
+        sleep 2
+      fi
+      ;;
+    4)
+      if [ -x /usr/bin/sadim-task-manager ]; then
+        /usr/bin/sadim-task-manager
+      else
+        echo "مدير المهام غير متوفر"
+        sleep 2
+      fi
+      ;;
+    5)
+      if [ -x /usr/bin/sadim-settings ]; then
+        /usr/bin/sadim-settings
+      else
+        echo "الإعدادات غير متوفرة"
+        sleep 2
+      fi
+      ;;
+    6)
+      if [ -x /bin/sh ]; then
+        /bin/sh
+      else
+        echo "محطة الأوامر غير متوفرة"
+        sleep 2
+      fi
+      ;;
+    7)
+      if [ -x /opt/brave/brave-browser ]; then
+        /opt/brave/brave-browser &
+      elif command -v lynx >/dev/null 2>&1; then
+        lynx
+      elif command -v links >/dev/null 2>&1; then
+        links
+      else
+        echo "متصفح الويب غير مثبت. يتم تثبيت Brave تلقائياً عند الإقلاع."
+        sleep 2
+      fi
+      ;;
+    8)
+      echo -n "مسار ملف .exe: "
+      read exe_path
+      if [ -n "$exe_path" ] && [ -x /usr/bin/sadim-wine ]; then
+        /usr/bin/sadim-wine "$exe_path"
+      else
+        echo "ملف غير موجود أو Wine غير مثبت"
+        sleep 2
+      fi
+      ;;
+    9)
+      echo "إيقاف النظام..."
+      sleep 1
+      poweroff 2>/dev/null || reboot -f 2>/dev/null || echo "لا يمكن إيقاف النظام"
+      exit 0
+      ;;
+    0)
+      echo "إعادة التشغيل..."
+      sleep 1
+      reboot -f 2>/dev/null || echo "لا يمكن إعادة التشغيل"
+      exit 0
+      ;;
+    *)
+      echo "اختيار غير صحيح"
+      sleep 1
+      ;;
+  esac
+}
+
+# حلقة البرنامج الرئيسي
+while true; do
+  show_menu
+  read choice
+  launch_app "$choice"
+
+  # إذا لم يكن الخيار إغلاق النظام، ارجع للقائمة
+  case "$choice" in
+    9|0) exit 0 ;;
+  esac
+done

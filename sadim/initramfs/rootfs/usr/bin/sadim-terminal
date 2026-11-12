@@ -1,0 +1,44 @@
+#!/bin/sh
+# Sadim OS — Terminal (محطة الأوامر)
+# محطة أوامر شبيهة بـ Windows Command Prompt / PowerShell
+# تسمح بتشغيل أوامر النظام مباشرة
+
+set -e
+
+PROMPT="sadim@sadim:~$ "
+
+show_help() {
+  echo "================================================"
+  echo "   محطة الأوامر — Sadim OS"
+  echo "================================================"
+  echo ""
+  echo "  أوامر متاحة:"
+  echo "  ls, cd, pwd, mkdir, rm, cp, mv, touch, cat"
+  echo "  ps, kill, top, free, df, du, uname"
+  echo "  ip, ifconfig, ping, wget, curl"
+  echo "  modprobe, lsmon, dmesg"
+  echo "  exit — إغلاق المحطة"
+  echo ""
+}
+
+# حلقة البرنامج الرئيسي
+while true; do
+  echo -n "$PROMPT"
+  read cmd args
+
+  case "$cmd" in
+    exit|quit)
+      echo "تم إغلاق محطة الأوامر."
+      exit 0
+      ;;
+    help|--help|-h)
+      show_help
+      ;;
+    "")
+      ;;
+    *)
+      # تنفيذ الأمر مباشرة
+      $cmd $args 2>/dev/null || echo "أمر غير معروف: $cmd"
+      ;;
+  esac
+done

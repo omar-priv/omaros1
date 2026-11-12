@@ -9,6 +9,14 @@ log() { echo "[drivers] $*"; }
 
 load_driver() {
   local drv="$1"
+
+  # التحقق من وجود التعريف قبل محاولة التحميل
+  if [ ! -f "/lib/modules/$(uname -r)/kernel/$drv.ko" ] 2>/dev/null && \
+     [ ! -f "/lib/modules/$(uname -r)/kernel/drivers/*/$drv.ko" ] 2>/dev/null; then
+    log "INFO: تعريف $drv غير موجود في النواة (قد يكون مدمجاً أو غير مطلوب)"
+    return 0
+  fi
+
   if modprobe "$drv" 2>/dev/null; then
     log "تم تحميل تعريف: $drv"
   else

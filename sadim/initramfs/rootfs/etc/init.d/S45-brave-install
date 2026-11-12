@@ -1,7 +1,7 @@
 #!/bin/sh
 # Sadim OS — تثبيت متصفح Brave Browser تلقائياً عند الإقلاع الأول
 # يتم تحميل Brave من موقعه الرسمي وتثبيته في /opt/brave
-# لا أدوات خارجية — فقط wget و tar المتوفرة في النظام
+# لا أدوات خارجية — فقط wget و unzip المتوفرة في النظام
 
 set -u
 
@@ -14,6 +14,18 @@ BRAVE_URL="https://github.com/brave/brave-browser/releases/latest/download/brave
 
 install_brave() {
   log "بدء تحميل وتثبيت متصفح Brave Browser…"
+
+  # التحقق من وجود الأدوات المطلوبة
+  if ! command -v wget >/dev/null 2>&1; then
+    log "ERROR: wget غير مثبت — لا يمكن تحميل Brave Browser"
+    return 1
+  fi
+
+  if ! command -v unzip >/dev/null 2>&1; then
+    log "ERROR: unzip غير مثبت — لا يمكن استخراج Brave Browser"
+    log "يمكن تثبيت unzip عبر Buildroot أو تنزيل Brave يدوياً من: https://brave.com/"
+    return 1
+  fi
 
   # إنشاء مجلد التثبيت
   mkdir -p "$BRAVE_DIR"

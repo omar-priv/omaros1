@@ -1,0 +1,52 @@
+#!/bin/sh
+# Sadim OS — Browser (متصفح الويب)
+# يحاول تشغيل Brave Browser أولاً، ثم lynx أو links كبديل
+
+set -e
+
+log() { echo "[browser] $*"; }
+
+URL="${1:-https://www.google.com}"
+
+# محاولة تشغيل Brave Browser
+if [ -x /opt/brave/brave-browser ]; then
+  log "تشغيل Brave Browser..."
+  /opt/brave/brave-browser "$URL" &
+  exit 0
+fi
+
+# محاولة تشغيلlynx
+if command -v lynx >/dev/null 2>&1; then
+  log "تشغيل lynx..."
+  lynx "$URL"
+  exit 0
+fi
+
+# محاولة تشغيل links
+if command -v links >/dev/null 2>&1; then
+  log "تشغيل links..."
+  links "$URL"
+  exit 0
+fi
+
+# محاولة تشغيل w3m
+if command -v w3m >/dev/null 2>&1; then
+  log "تشغيل w3m..."
+  w3m "$URL"
+  exit 0
+fi
+
+# لا يوجد متصفح مثبت
+echo "================================================"
+echo "   متصفح الويب — Sadim OS"
+echo "================================================"
+echo ""
+echo "  لا يوجد متصفح ويب مثبت حالياً."
+echo ""
+echo "  يتم تثبيت Brave Browser تلقائياً عند الإقلاع الأول."
+echo "  إذا لم يتم التثبيت، يرجى التحقق من اتصال الإنترنت."
+echo ""
+echo "  للمساعدة، راجع: https://brave.com/"
+echo ""
+echo -n "  اضغط Enter للعودة..."
+read

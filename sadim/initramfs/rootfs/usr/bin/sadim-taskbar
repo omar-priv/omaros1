@@ -1,177 +1,142 @@
-#!/usr/bin/env qt6-linuxfb
-// Sadim OS — Taskbar (Windows 10 Style)
-// شريط المهام الشبيه بـ Windows 10 Taskbar
-// يحتوي على زر Start، أيقونات التطبيقات المثبتة، الساعة، ومؤشر اللغة
-// استهلاك منخفض جداً للموارد
+#!/bin/sh
+# Sadim OS — Taskbar (Windows 10 Style)
+# شريط المهام الشبيه بـ Windows 10 Taskbar
+# يحتوي على زر Start، معلومات النظام، الساعة، ومؤشر اللغة
+# يعمل كتطبيق shell في محطة أوامر منفصلة
 
-#include <QApplication>
-#include <QWidget>
-#include <QHBoxLayout>
-#include <QPushButton>
-#include <QLabel>
-#include <QTimer>
-#include <QTime>
-#include <QFontDatabase>
-#include <QDesktopWidget>
-#include <QProcess>
+set -e
 
-class Taskbar : public QWidget {
-    Q_OBJECT
-public:
-    Taskbar() {
-        setWindowFlags(Qt::FramelessWindowHint | Qt::Tool | Qt::WindowStaysOnTopHint);
-        setFixedHeight(40); // ارتفاع شريط المهام Windows 10
+INTERVAL="${1:-1}"
 
-        // Windows 10 Taskbar StyleSheet
-        setStyleSheet(R"(
-            QWidget#taskbar {
-                background-color: #f0f0f0;
-                border-top: 1px solid #d0d0d0;
-                border-bottom: none;
-                border-left: none;
-                border-right: none;
-            }
-            QPushButton#startBtn {
-                background-color: #0078D7;
-                color: white;
-                border: none;
-                border-radius: 0px; /* Windows 10 Sharp Corners */
-                min-width: 100px;
-                min-height: 36px;
-                font-size: 13px;
-                font-weight: bold;
-                text-align: left;
-                padding-left: 10px;
-            }
-            QPushButton#startBtn:hover {
-                background-color: #005a9e;
-            }
-            QPushButton#startBtn:pressed {
-                background-color: #004578;
-            }
-            QPushButton#appBtn {
-                background-color: #f0f0f0;
-                color: #333333;
-                border: none;
-                border-bottom: 2px solid transparent;
-                min-width: 44px;
-                min-height: 36px;
-                font-size: 12px;
-            }
-            QPushButton#appBtn:hover {
-                background-color: #e0e0e0;
-                border-bottom: 2px solid #0078D7;
-            }
-            QPushButton#appBtn:pressed {
-                background-color: #d0d0d0;
-            }
-            QPushButton#appBtn#active {
-                border-bottom: 2px solid #0078D7;
-                background-color: #e0e0e0;
-            }
-            QLabel#timeLabel {
-                color: #333333;
-                font-size: 13px;
-                font-weight: bold;
-                padding: 0 10px;
-                min-width: 80px;
-            }
-            QLabel#langLabel {
-                color: #666666;
-                font-size: 12px;
-                padding: 0 10px;
-                min-width: 40px;
-                background-color: #f0f0f0;
-                border-left: 1px solid #d0d0d0;
-            }
-        )");
+log() { echo "[taskbar] $*"; }
 
-        QHBoxLayout *layout = new QHBoxLayout(this);
-        layout->setContentsMargins(0, 0, 0, 0);
-        layout->setSpacing(0);
-
-        // زر Start (مثل Windows 10)
-        m_startBtn = new QPushButton("ابدأ (Start)");
-        m_startBtn->setObjectName("startBtn");
-        connect(m_startBtn, &QPushButton::clicked, this, &Taskbar::onStart);
-        layout->addWidget(m_startBtn);
-
-        layout->addSpacing(5);
-
-        // أيقونات التطبيقات المثبتة (Pinned Apps)
-        const QStringList pinnedApps = {
-            {"مستكشف الملفات", "/usr/bin/sadim-file-explorer"},
-            {"المفكرة", "/usr/bin/sadim-notepad"},
-            {"الحاسبة", "/usr/bin/sadim-calculator"},
-            {"مدير المهام", "/usr/bin/sadim-task-manager"}
-        };
-
-        for (int i = 0; i < pinnedApps.size(); ++i) {
-            QString name = pinnedApps[i].first;
-            QString path = pinnedApps[i].second;
-            QPushButton *btn = new QPushButton(name.left(8) + "…");
-            btn->setObjectName("appBtn");
-            btn->setProperty("appPath", path);
-            btn->setMinimumSize(44, 36);
-            connect(btn, &QPushButton::clicked, this, [this, path]() {
-                QProcess::startDetached(path);
-            });
-            layout->addWidget(btn);
-        }
-
-        layout->addStretch();
-
-        // الساعة (مثل Windows 10)
-        m_timeLabel = new QLabel();
-        m_timeLabel->setObjectName("timeLabel");
-        layout->addWidget(m_timeLabel);
-
-        // مؤشر اللغة (مثل Windows 10)
-        m_langLabel = new QLabel("ENG");
-        m_langLabel->setObjectName("langLabel");
-        layout->addWidget(m_langLabel);
-
-        // تحديث الساعة كل ثانية
-        m_timer = new QTimer(this);
-        connect(m_timer, &QTimer::timeout, this, &Taskbar::updateTime);
-        m_timer->start(1000);
-        updateTime();
-    }
-
-private slots:
-    void updateTime() {
-        QTime time = QTime::currentTime();
-        m_timeLabel->setText(time.toString("hh:mm tt"));
-        // التاريخ البسيط
-        QString date = QDate::currentDate().toString("dd MMMM yyyy");
-        setToolTip(date);
-    }
-
-    void onStart() {
-        // تشغيل قائمة ابدأ (Start Menu)
-        QProcess::startDetached("/usr/bin/sadim-start-menu");
-    }
-
-private:
-    QPushButton *m_startBtn;
-    QLabel *m_timeLabel;
-    QLabel *m_langLabel;
-    QTimer *m_timer;
-};
-
-#include "moc_taskbar.cpp"
-
-int main(int argc, char *argv[])
-{
-    QApplication app(argc, argv);
-    app.setApplicationName("Sadim Taskbar");
-    app.setApplicationVersion("0.2-daily");
-
-    QFont font("Segoe UI", 10);
-    if (!font.exactMatch()) font = QFont("DejaVu Sans", 10);
-    app.setFont(font);
-
-    Taskbar bar;
-    bar.show();
-    return app.exec();
+show_taskbar() {
+  clear
+  echo "╔═══════════════════════════════════════════════════════════════════════╗"
+  echo "║  [ابدأ (Start)]  📁  📝  🧮  📊  ⚙️                                    ║"
+  echo "╠═══════════════════════════════════════════════════════════════════════╣"
+  echo "║  Sadim OS v0.2-daily  |  Administrator  |  ar_SA.UTF-8  |  ENG    ║"
+  echo "╠═══════════════════════════════════════════════════════════════════════╣"
+  echo "║  CPU: $(get_cpu)%  |  RAM: $(get_ram)  |  Disk: $(get_disk)  |  $(get_time)  ║"
+  echo "╚═══════════════════════════════════════════════════════════════════════╝"
+  echo ""
+  echo "  التطبيقات المثبتة في شريط المهام:"
+  echo "  1. مستكشف الملفات (File Explorer)"
+  echo "  2. المفكرة (Notepad)"
+  echo "  3. الحاسبة (Calculator)"
+  echo "  4. مدير المهام (Task Manager)"
+  echo "  5. الإعدادات (Settings)"
+  echo ""
+  echo "  الأوامر: [1-5] — تشغيل تطبيق | s — قائمة ابدأ | q — خروج"
+  echo -n "  اختر الأمر: "
 }
+
+get_cpu() {
+  if [ -r /proc/stat ]; then
+    local line=$(head -1 /proc/stat)
+    local parts=($line)
+    local user=${parts[1]:-0}
+    local nice=${parts[2]:-0}
+    local system=${parts[3]:-0}
+    local idle=${parts[4]:-0}
+    local total=$((user + nice + system + idle))
+    local active=$((user + nice + system))
+    if [ "$total" -gt 0 ]; then
+      echo "$(( active * 100 / total ))%"
+    else
+      echo "0%"
+    fi
+  else
+    echo "0%"
+  fi
+}
+
+get_ram() {
+  if [ -r /proc/meminfo ]; then
+    local total=$(grep '^MemTotal:' /proc/meminfo | awk '{print $2}')
+    local available=$(grep '^MemAvailable:' /proc/meminfo | awk '{print $2}')
+    local used=$((total - available))
+    local pct=$(( used * 100 / total ))
+    echo "${used}KB / ${total}KB (${pct}%)"
+  else
+    echo "غير متاح"
+  fi
+}
+
+get_disk() {
+  if command -v df >/dev/null 2>&1; then
+    df -h / 2>/dev/null | tail -1 | awk '{print $5" مستخدم"}'
+  else
+    echo "غير متاح"
+  fi
+}
+
+get_time() {
+  date '+%H:%M %p' 2>/dev/null || date '+%H:%M'
+}
+
+# حلقة البرنامج الرئيسي
+while true; do
+  show_taskbar
+  read -t "$INTERVAL" cmd || true
+  if [ -n "$cmd" ]; then
+    case "$cmd" in
+      q|Q)
+        echo "تم إغلاق شريط المهام."
+        exit 0
+        ;;
+      s|S)
+        if [ -x /usr/bin/sadim-start-menu ]; then
+          /usr/bin/sadim-start-menu
+        else
+          echo "قائمة ابدأ غير متوفرة"
+          sleep 2
+        fi
+        ;;
+      1)
+        if [ -x /usr/bin/sadim-file-explorer ]; then
+          /usr/bin/sadim-file-explorer &
+        else
+          echo "مستكشف الملفات غير متوفر"
+          sleep 2
+        fi
+        ;;
+      2)
+        if [ -x /usr/bin/sadim-notepad ]; then
+          /usr/bin/sadim-notepad &
+        else
+          echo "المفكرة غير متوفرة"
+          sleep 2
+        fi
+        ;;
+      3)
+        if [ -x /usr/bin/sadim-calculator ]; then
+          /usr/bin/sadim-calculator &
+        else
+          echo "الحاسبة غير متوفرة"
+          sleep 2
+        fi
+        ;;
+      4)
+        if [ -x /usr/bin/sadim-task-manager ]; then
+          /usr/bin/sadim-task-manager &
+        else
+          echo "مدير المهام غير متوفر"
+          sleep 2
+        fi
+        ;;
+      5)
+        if [ -x /usr/bin/sadim-settings ]; then
+          /usr/bin/sadim-settings &
+        else
+          echo "الإعدادات غير متوفرة"
+          sleep 2
+        fi
+        ;;
+      *)
+        echo "أمر غير معروف"
+        sleep 1
+        ;;
+    esac
+  fi
+done
