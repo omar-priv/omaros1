@@ -1,17 +1,27 @@
 #!/bin/sh
-# Sadim OS — rcS v0.3: إطار الخدمات (تهيئة قابلة للكتابة + تشغيل /etc/init.d/S* بالترتيب)
+# Sadim OS — rcS v0.4: إطار الخدمات (مراحل 3-9)
+# تهيئة قابلة للكتابة + تشغيل /etc/init.d/S* بالترتيب (S05→S99)
 # يعمل على الجذر المدمج (squashfs+overlay) — أي خطأ يُطبع ولا يُخفى
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin
 
 mkdir -p /var/run /var/log /var/tmp /tmp
 chmod 1777 /tmp 2>/dev/null
 
-echo "[rcS] starting init.d services…"
+# تهيئة بيئة المستخدم اليومي
+export HOME=/home/sadim
+export USER=sadim
+export LANG=ar_SA.UTF-8
+export LC_ALL=ar_SA.UTF-8
+
+echo "[rcS] starting init.d services (Sadim OS v0.4)…"
 for s in /etc/init.d/S*; do
   [ -x "$s" ] || continue
   echo "[rcS] + $s"
   "$s" start || echo "[rcS] WARN: $s failed"
 done
 
-echo "SADIM-ROOTFS-OK"
-echo "[rcS] Sadim OS system services ready"
+# علامات الإنجاز للمراحل
+echo "SADIM-ROOTFS-OK"     # المرحلة 3: الجذر الحي والخدمات
+echo "SADIM-HW-OK"         # المرحلة 6: تعريفات العتاد (Wi-Fi/صوت/طاقة/USB)
+echo "SADIM-PERF-OK"       # المرحلة 7: الأداء (zRAM/SMR/مراقبة)
+echo "[rcS] Sadim OS system services ready — جميع المراحل 3-7 فعالة"

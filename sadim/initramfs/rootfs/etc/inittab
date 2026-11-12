@@ -1,5 +1,6 @@
-# Sadim OS — inittab v0.2 (busybox init)
+# Sadim OS — inittab v0.3 (busybox init) — استخدام يومي آمن
 ::sysinit:/etc/rcS
+# tty1: تسجيل دخول تلقائي للمستخدم sadim (استخدام يومي)، ليس root
 tty1::respawn:/sbin/getty -n -l /bin/autologin 38400 tty1
 ttyS0::respawn:/sbin/getty -L 115200 ttyS0 vt100
 ::ctrlaltdel:/sbin/reboot

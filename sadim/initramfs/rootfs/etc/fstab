@@ -1,0 +1,24 @@
+# Sadim OS — fstab محسن للهارد الميكانيكي SMR (مرحلة 7)
+# قاعدة: noatime + nodiratime + tmpfs للملفات المؤقتة — صفر كتابات عشوائية على الهارد
+#
+# تنسيق: <file system> <mount point> <type> <options> <dump> <pass>
+
+# الجذر —読み seule في Live (squashfs)، قابل للكتابة عبر overlay في الذاكرة
+overlay         /               overlay   defaults,noatime,nodiratime     0 0
+
+# ملفات مؤقتة في RAM (لا تلمس الهارد SMR)
+tmpfs           /tmp            tmpfs     defaults,noatime,nosuid,size=256M 0 0
+tmpfs           /var/log        tmpfs     defaults,noatime,nosuid,size=128M 0 0
+tmpfs           /var/run        tmpfs     defaults,noatime,nosuid,size=64M  0 0
+tmpfs           /var/tmp        tmpfs     defaults,noatime,nosuid,size=64M  0 0
+tmpfs           /run            tmpfs     defaults,noatime,nosuid,size=64M  0 0
+
+# أقسام Windows (NTFS/FAT) — قراءة فقط افتراضياً (حماية ملفات المستخدم)
+# افتحها يدوياً عند الحاجة: mount -t ntfs-3g /dev/sda2 /mnt/windows
+# /dev/sda1   /mnt/windows      ntfs-3g   defaults,noatime,ro,uid=1000,gid=1000  0 0
+
+# أجهزة Swap — zRAM فقط (لا swap على الهارد SMR)
+# /dev/zram0  none              swap      defaults                        0 0
+
+# أقراص خارجية USB (تُ mounted تلقائياً عبر usbmount عند الإدراج)
+# /dev/sdb1   /mnt/usb          auto      defaults,noatime,nofail         0 0

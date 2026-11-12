@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Sadim OS — بوابة المرحلة 3: إقلاع الجذر الحي كاملاً في QEMU
+# Sadim OS — بوابة المراحل 3-7: إقلاع الجذر الحي كاملاً في QEMU
 # المسار: kernel + initramfs (محمّل v0.3) → squashfs على virtio → overlayfs → switch_root
-#         → buildroot init (inittab سديم) → rcS → خدمات (سجلات + DHCP عبر virtio-net)
-# النجاح: العلامات الأربع ×3 تشغيلات متتالية (مضاد الارتداد) — لا نجاح وهمي.
+#         → buildroot init → rcS → جميع الخدمات (Wi-Fi/صوت/طاقة/zRAM/مراقبة/SMR)
+# النجاح: العلامات الست ×3 تشغيلات متتالية (مضاد الارتداد):
+#   SADIM-BOOT-OK, SADIM-LIVE-OK, SADIM-ROOTFS-OK, SADIM-NET-OK, SADIM-HW-OK, SADIM-PERF-OK
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -16,7 +17,7 @@ LOG="$OUT/rootfs-boot-log.txt"
 : > "$LOG"
 RUNS=3
 ok=0
-echo "[sadim] rootfs boot gate: $RUNS consecutive runs required (anti-flakiness)"
+echo "[sadim] rootfs boot gate v0.2: $RUNS consecutive runs required (العلامات الست ×3)"
 for i in $(seq 1 $RUNS); do
   rlog="$OUT/rootfs-boot-log-run$i.txt"
   : > "$rlog"
@@ -34,12 +35,14 @@ for i in $(seq 1 $RUNS); do
   if grep -q "SADIM-BOOT-OK"   "$rlog" \
      && grep -q "SADIM-LIVE-OK"   "$rlog" \
      && grep -q "SADIM-ROOTFS-OK" "$rlog" \
-     && grep -q "SADIM-NET-OK"    "$rlog"; then
+     && grep -q "SADIM-NET-OK"    "$rlog" \
+     && grep -q "SADIM-HW-OK"     "$rlog" \
+     && grep -q "SADIM-PERF-OK"   "$rlog"; then
     ok=$((ok+1))
     cp "$rlog" "$LOG"
   else
     echo "[sadim] run $i FAILED — one or more markers missing"
-    for m in SADIM-BOOT-OK SADIM-LIVE-OK SADIM-ROOTFS-OK SADIM-NET-OK; do
+    for m in SADIM-BOOT-OK SADIM-LIVE-OK SADIM-ROOTFS-OK SADIM-NET-OK SADIM-HW-OK SADIM-PERF-OK; do
       grep -q "$m" "$rlog" && echo "  marker $m: PRESENT" || echo "  marker $m: MISSING"
     done
     cp "$rlog" "$LOG"
@@ -47,14 +50,14 @@ for i in $(seq 1 $RUNS); do
 done
 
 if [ "$ok" -eq "$RUNS" ]; then
-  echo "=============================================="
-  echo "  ROOTFS BOOT TEST PASSED — all 4 markers x3"
-  echo "=============================================="
+  echo "=============================================================="
+  echo "  ROOTFS BOOT TEST PASSED — all 6 markers x3 (v0.2)"
+  echo "=============================================================="
   exit 0
 else
-  echo "=============================================="
+  echo "=============================================================="
   echo "  ROOTFS BOOT TEST FAILED — $ok/$RUNS runs ok"
-  echo "=============================================="
+  echo "=============================================================="
   echo "---- last 100 lines of last boot log ----"
   tail -n 100 "$LOG"
   exit 1

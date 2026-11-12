@@ -1,0 +1,67 @@
+#!/bin/sh
+# Sadim OS — تحسين الهارد الميكانيكي SMR (مرحلة 7)
+# يُلغِي kirjainträge العشوائية على القرص SMR، يضبط noatime، writeback، ويقلل المزامنة
+# الهدف: حل بطئ الهارد الميكانيكي WD10SPZX 1TB SMR
+set -u
+
+log() { echo "[smr] $*"; }
+
+optimize_smr() {
+  log "بدء تحسين الهارد SMR…"
+
+  # 1. تعيين noatime/nodiratime لجميع أنظمة الملفات mounted
+  # (عدم تسجيل وقت الوصول يقلل كتابات 읽기의 على القرص)
+  mount -o remount,noatime,nodiratime / 2>/dev/null && \
+    log "تم تفعيل noatime/nodiratime على الجذر" || \
+    log "WARN: تعذر إعادة mounting الجذر مع noatime"
+
+  # 2. ضبط وضع writeback للقرص (تجميع الكتابات بدلاً من كتابات فورية)
+  if [ -b /dev/sda ]; then
+    # تعطيل write cache على الأقراص SMR لتجنب تجمع الكتابات الكبيرة
+    hdparm -W 0 /dev/sda 2>/dev/null && \
+      log "تم تعطيل write cache على /dev/sda (حماية SMR)" || \
+      log "WARN: تعذر ضبط hdparm على /dev/sda"
+  fi
+
+  # 3. ضبط معاييرvm للحد من الكتابة المتواصلة على القرص
+  echo 10 > /proc/sys/vm/dirty_ratio 2>/dev/null || true   # ابدأ الكتابة عند 10% فقط من الذاكرة المتسخة
+  echo 5 > /proc/sys/vm/dirty_background_ratio 2>/dev/null || true  # ابدأ الكتابة في الخلفية عند 5%
+  echo 500 > /proc/sys/vm/dirty_expire_centisecs 2>/dev/null || true  # انتهاء صلاحية البيانات المتسخة بعد 5 ثوانٍ
+  echo 1000 > /proc/sys/vm/dirty_writeback_centisecs 2>/dev/null || true  # فحص الكتابة كل 10 ثوانٍ
+  log "تم ضبط معايير vm لتقليل書き込м على القرص SMR"
+
+  # 4. تعطيل خدمات الفهرسة إذا كانت موجودة (تقلل الكتابات العشوائية)
+  # لا توجد systemd في سديم، لكن نوقف أي عمليات فهرسة
+
+  # 5. تأجيل مزامنة القرص (أقل تكرار)
+  echo 30 > /proc/sys/vm/laptop_mode 2>/dev/null || true
+  log "تم تفعيل laptop_mode (تقليل مزامنة القرص)"
+
+  # 6. عرض معلومات القرص للتثبيت
+  if [ -x /sbin/hdparm ]; then
+    log "معلومات القرص:"
+    hdparm -I /dev/sda 2>/dev/null | grep -E 'Model|Sector|Rotation|Trim' | head -5 || true
+  fi
+
+  log "تحسين SMR مكتمل — הספרع mechanical محمي الآن"
+}
+
+status_smr() {
+  echo "=== حالة تحسينات SMR ==="
+  echo "mount options للجذر:"
+  mount | grep ' / ' | head -1
+  echo "معايير vm:"
+  [ -r /proc/sys/vm/dirty_ratio ] && echo "dirty_ratio: $(cat /proc/sys/vm/dirty_ratio)"
+  [ -r /proc/sys/vm/laptop_mode ] && echo "laptop_mode: $(cat /proc/sys/vm/laptop_mode)"
+  echo "أجهزة القرص:"
+  lsblk 2>/dev/null | grep -E 'sda|nvme|mmc' | head -5 || true
+}
+
+case "$1" in
+  start) optimize_smr ;;
+  stop)  log "تحسينات SMR لا تحتاج إيقاف (تدخل واحد عند الإقلاع)" ;;
+  restart) optimize_smr ;;
+  status) status_smr ;;
+  *) echo "Usage: $0 {start|stop|restart|status}"; exit 1 ;;
+esac
+exit 0

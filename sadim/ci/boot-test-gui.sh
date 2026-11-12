@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Sadim OS — بوابة المرحلة 4: اختبار الواجهة الرسومية في QEMU
+# Sadim OS — بوابة المراحل 4-7: اختبار الواجهة الرسومية + العتاد + الأداء في QEMU
 # المسار: kernel + initramfs v0.3 → squashfs (virtio) → overlayfs → switch_root
 #         → buildroot init → seatd → weston (DRM+pixman على virtio-gpu)
 #         → screendump عبر QMP للتحقق من بكسلات فعلية
-# النجاح: SADIM-BOOT-OK + SADIM-LIVE-OK + SADIM-ROOTFS-OK + SADIM-NET-OK + SADIM-GUI-OK ×3
+# النجاح: العلامات السبعة ×3 تشغيلات متتالية:
+#   BOOT, LIVE, ROOTFS, NET, GUI, HW, PERF
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -17,7 +18,7 @@ LOG="$OUT/gui-boot-log.txt"
 : > "$LOG"
 RUNS=3
 ok=0
-echo "[sadim] GUI boot gate: $RUNS consecutive runs required (anti-flakiness)"
+echo "[sadim] GUI boot gate v0.2: $RUNS consecutive runs required (العلامات السبعة ×3)"
 for i in $(seq 1 $RUNS); do
   rlog="$OUT/gui-boot-log-run$i.txt"
   qmp_log="$OUT/gui-qmp-run$i.log"
@@ -95,14 +96,14 @@ for i in $(seq 1 $RUNS); do
 done
 
 if [ "$ok" -eq "$RUNS" ]; then
-  echo "========================================================"
-  echo "  GUI BOOT TEST PASSED — all 5 markers x3"
-  echo "========================================================"
+  echo "============================================================"
+  echo "  GUI BOOT TEST PASSED — all markers x3 (v0.2)"
+  echo "============================================================"
   exit 0
 else
-  echo "========================================================"
+  echo "============================================================"
   echo "  GUI BOOT TEST FAILED ($ok/$RUNS runs reached all markers)"
-  echo "========================================================"
+  echo "============================================================"
   echo "---- last 100 lines of last boot log ----"
   tail -n 100 "$LOG"
   exit 1

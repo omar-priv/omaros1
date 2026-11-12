@@ -1,0 +1,64 @@
+#!/bin/sh
+# Sadim OS — خدمة Wi-Fi QCA9377 (ath10k + firmware-5.bin)
+# مرحلة 6: تعريف العتاد الحقيقي — Wi-Fi Qualcomm Atheros QCA9377 (168C:0042)
+# يستخدم firmware-5.bin (أفضل أداءً من firmware-6 حسب التوثيق المعروف)
+set -u
+
+DAEMON=/usr/bin/wpa_supplicant
+IFACE="wlan0"
+FIRMWARE_DIR="/lib/firmware/ath10k/QCA9377/hw1.0"
+
+log() { echo "[wifi] $*"; }
+
+start_wifi() {
+  log "بدء تشغيل Wi-Fi QCA9377…"
+
+  # التحقق من وجود واجهة لاسلكية
+  if ! ip link show "$IFACE" >/dev/null 2>&1; then
+    # البحث عن أي واجهة لاسلكية
+    IFACE=$(ip -o link show | awk -F': ' '{print $2}' | grep -E '^wlan|^wlp' | head -1)
+    if [ -z "$IFACE" ]; then
+      log "لا توجد واجهة لاسلكية مكتشفة — تخطي Wi-Fi"
+      return 0
+    fi
+    log "تم اكتشاف واجهة لاسلكية: $IFACE"
+  fi
+
+  # تحميل تعريف ath10k إذا لم يكن محملاً
+  if ! lsmod 2>/dev/null | grep -q ath10k_pci; then
+    modprobe ath10k_pci 2>/dev/null || log "WARN: تعذر تحميل ath10k_pci (قد يتطلب firmware)"
+  fi
+
+  # تشغيل واجهة الشبكة
+  ip link set "$IFACE" up 2>/dev/null || log "WARN: تعذر رفع واجهة $IFACE"
+
+  # تشغيل wpa_supplicant في الخلفية (إدارة شبكات Wi-Fi)
+  if [ -x "$DAEMON" ]; then
+    mkdir -p /run/wpa_supplicant
+    $DAEMON -B -i "$IFACE" -D nl80211 -C /run/wpa_supplicant 2>/dev/null || \
+      log "WARN: تعذر بدء wpa_supplicant (قد لا توجد شبكة محفوظة)"
+    log "تم تشغيل wpa_supplicant على $IFACE"
+  else
+    log "wpa_supplicant غير مثبت — Wi-Fi محدود على أداة ip فقط"
+  fi
+
+  # محاولة جلب عنوان IP عبر DHCP
+  if [ -x /sbin/udhcpc ]; then
+    udhcpc -i "$IFACE" -s /etc/udhcpc.script -q -n -t 3 -T 2 >/dev/null 2>&1 &
+    log "طلب DHCP على $IFACE (في الخلفية)"
+  fi
+}
+
+stop_wifi() {
+  log "إيقاف Wi-Fi…"
+  killall wpa_supplicant 2>/dev/null || true
+  ip link set "$IFACE" down 2>/dev/null || true
+}
+
+case "$1" in
+  start) start_wifi ;;
+  stop)  stop_wifi ;;
+  restart) stop_wifi; sleep 1; start_wifi ;;
+  *) echo "Usage: $0 {start|stop|restart}"; exit 1 ;;
+esac
+exit 0

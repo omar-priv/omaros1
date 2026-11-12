@@ -1,2 +1,4 @@
 #!/bin/sh
-exec /bin/login -f root
+# Sadim OS — تسجيل دخول تلقائي للمستخدم اليومي sadim (ليس root)
+# للاستخدام اليومي آمن — الصلاحيات الإدارية عبر sudo/su عند الحاجة فقط
+exec /bin/login -f sadim

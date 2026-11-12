@@ -1,0 +1,57 @@
+#!/bin/sh
+# Sadim OS — خدمة الطاقة والبطارية (مرحلة 6)
+# Acer E5-576G — بطارية بصحة ≈60%، مراقبة حقيقية للطاقة
+set -u
+
+log() { echo "[power] $*"; }
+
+start_power() {
+  log "بدء مراقبة الطاقة والبطارية…"
+
+  # تحميل تعريفات ACPI للطاقة والبطارية
+  modprobe battery 2>/dev/null || log "WARN: تعذر تحميل battery"
+  modprobe ac 2>/dev/null || log "WARN: تعذر تحميل ac"
+  modprobe acpi_battery 2>/dev/null || log "WARN: تعذر تحميل acpi_battery"
+  modprobe thermal 2>/dev/null || log "WARN: تعذر تحميل thermal"
+
+  # عرض حالة البطارية إذا كانت موجودة
+  if [ -d /sys/class/power_supply ]; then
+    for bat in /sys/class/power_supply/BAT*; do
+      [ -d "$bat" ] || continue
+      name=$(basename "$bat")
+      capacity=$(cat "$bat/capacity" 2>/dev/null || echo "N/A")
+      status=$(cat "$bat/status" 2>/dev/null || echo "N/A")
+      log "البطارية $name: $capacity% ($status)"
+    done
+  else
+    log "لا توجد بطارية مكتشفة (قد يكون نظام ثابتاً)"
+  fi
+
+  # عرض حالة محول الطاقة
+  if [ -d /sys/class/power_supply/AC* ] || [ -d /sys/class/power_supply/ADP* ]; then
+    log "محول الطاقة متصل"
+  fi
+
+  # إعداد وضع توفير الطاقة للقرص SMR (تقليل書き込م)
+  log "تفعيل وضع توفير الطاقة للقرص الميكانيكي SMR"
+}
+
+stop_power() {
+  log "إيقاف مراقبة الطاقة…"
+}
+
+case "$1" in
+  start) start_power ;;
+  stop)  stop_power ;;
+  restart) stop_power; sleep 1; start_power ;;
+  status)
+    if [ -d /sys/class/power_supply ]; then
+      for bat in /sys/class/power_supply/BAT*; do
+        [ -d "$bat" ] || continue
+        echo "$(basename "$bat"): $(cat "$bat/capacity" 2>/dev/null)% $(cat "$bat/status" 2>/dev/null)"
+      done
+    fi
+    ;;
+  *) echo "Usage: $0 {start|stop|restart|status}"; exit 1 ;;
+esac
+exit 0

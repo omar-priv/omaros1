@@ -1,3 +1,6 @@
-Sadim OS (سديم) 0.1-live
-Live system: all changes live in RAM and are lost on reboot.
-Accounts (live convenience only): root and sadim, no passwords.
+Sadim OS (سديم) 0.2-daily — الاستخدام اليومي
+النظام يعمل من الذاكرة (RAM) — لا كتابات على الهارد الداخلي SMR
+تحسينات فعّالة: zRAM swap، noatime، tmpfs للملفات المؤقتة
+الحسابات: sadim (المستخدم اليومي)، root (إداري عند الحاجة)
+Wi-Fi: QCA9377 (ath10k) | صوت: Realtek HD Audio | طاقة: مراقبة البطارية
+للتطوير والمساعدة: https://github.com/omar-priv/omaros1

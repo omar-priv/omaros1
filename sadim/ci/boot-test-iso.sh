@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Sadim OS — اختبار إقلاع ISO v0.3 عبر QEMU بمسار BIOS الحقيقي
-# (SeaBIOS → isolinux → kernel → init v0.3 → iso9660+loop → overlayfs → خدمات → DHCP)
-# 3 إقلاعات متتالية مطلوبة (ضد العشوائية). في وضع ISO النظام يبقى حياً (لا reboot) —
-# نجاح كل تشغيل = العلامات الأربع داخل المهلة دون Kernel panic.
+# Sadim OS — اختبار إقلاع ISO v0.2-daily عبر QEMU بمسار BIOS الحقيقي
+# (SeaBIOS → isolinux → kernel → init v0.3 → iso9660+loop → overlayfs → جميع الخدمات)
+# 3 إقلاعات متتالية مطلوبة (ضد العشوائية).
+# نجاح كل تشغيل = العلامات الست داخل المهلة دون Kernel panic:
+#   SADIM-BOOT-OK, SADIM-LIVE-OK, SADIM-ROOTFS-OK, SADIM-NET-OK, SADIM-HW-OK, SADIM-PERF-OK
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -14,11 +15,11 @@ LOG="$OUT/iso-boot-log.txt"
 : > "$LOG"
 RUNS=3
 ok=0
-echo "[sadim] ISO boot gate: $RUNS consecutive runs required (v0.2: full live system via real boot path)"
+echo "[sadim] ISO boot gate v0.2: $RUNS consecutive runs required (العلامات الست ×3)"
 for i in $(seq 1 $RUNS); do
   rlog="$OUT/iso-boot-log-run$i.txt"
   : > "$rlog"
-  echo "[sadim] ISO boot run $i/$RUNS: SeaBIOS + isolinux + kernel + live rootfs (TCG)"
+  echo "[sadim] ISO boot run $i/$RUNS: SeaBIOS + isolinux + kernel + live rootfs + HW + PERF (TCG)"
   timeout 300 qemu-system-x86_64 \
     -m 512M -nographic -no-reboot \
     -cdrom "$OUT/sadim.iso" -boot d \
@@ -29,12 +30,14 @@ for i in $(seq 1 $RUNS); do
   if grep -q "SADIM-BOOT-OK"   "$rlog" \
      && grep -q "SADIM-LIVE-OK"   "$rlog" \
      && grep -q "SADIM-ROOTFS-OK" "$rlog" \
-     && grep -q "SADIM-NET-OK"    "$rlog"; then
+     && grep -q "SADIM-NET-OK"    "$rlog" \
+     && grep -q "SADIM-HW-OK"     "$rlog" \
+     && grep -q "SADIM-PERF-OK"   "$rlog"; then
     ok=$((ok+1))
     cp "$rlog" "$LOG"
   else
     echo "[sadim] run $i FAILED — one or more markers missing"
-    for m in SADIM-BOOT-OK SADIM-LIVE-OK SADIM-ROOTFS-OK SADIM-NET-OK; do
+    for m in SADIM-BOOT-OK SADIM-LIVE-OK SADIM-ROOTFS-OK SADIM-NET-OK SADIM-HW-OK SADIM-PERF-OK; do
       grep -q "$m" "$rlog" && echo "  marker $m: PRESENT" || echo "  marker $m: MISSING"
     done
     echo "---- last 60 lines of run $i ISO boot log ----"
@@ -44,13 +47,13 @@ for i in $(seq 1 $RUNS); do
 done
 
 if [ "$ok" -eq "$RUNS" ]; then
-  echo "=================================================="
-  echo "  ISO BOOT TEST PASSED — all 4 markers x3 (real path)"
-  echo "=================================================="
+  echo "=============================================================="
+  echo "  ISO BOOT TEST PASSED — all 6 markers x3 (real path, v0.2)"
+  echo "=============================================================="
   exit 0
 else
-  echo "=================================================="
+  echo "=============================================================="
   echo "  ISO BOOT TEST FAILED ($ok/$RUNS runs reached all markers)"
-  echo "=================================================="
+  echo "=============================================================="
   exit 1
 fi
