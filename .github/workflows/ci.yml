@@ -77,81 +77,9 @@ jobs:
           grep -Fq 'grep -qx "${symbol}=y" .config' sadim/kernel/build.sh
           ! grep -Fq '\${symbol}' sadim/kernel/build.sh
           grep -Fq 'cp .config "$OUT/kernel.config"' sadim/kernel/build.sh
-          grep -q '^CONFIG_MISC_FILESYSTEMS=y
-          grep -q '^CONFIG_ZSMALLOC=y$' sadim/kernel/fragments/qemu-minimal.config
-          grep -q 'SADIM-LIVE-OK' sadim/initramfs/init
-          grep -Fq 'for dev in /dev/sr* /dev/sd*' sadim/initramfs/init
-          grep -q 'firmware-5.bin' sadim/initramfs/build.sh
-
-      - name: Verify key project documentation exists
-        run: |
-          test -f docs/adr/ADR-001-architecture.md
-          test -f docs/research/hardware-discovery.md
-          test -f docs/research/architecture-options.md
-          test -f docs/roadmap.md
-          test -f docs/known-issues.md
-          test -f docs/testing-strategy.md
-          test -f docs/usb-try-guide.md
-
-      - name: No committed secrets
-        run: |
-          if grep -riEn "(api[_-]?key|secret|password|token)[[:space:]]*[:=][[:space:]]*['\"][A-Za-z0-9]{16,}" \
-             --include='*.md' --include='*.yml' --include='*.sh' --include='*.py' . ; then
-            echo "::error::Potential secret found in tracked files"
-            exit 1
-          fi
-          echo "No secret-like assignments found."
- sadim/kernel/fragments/qemu-minimal.config
-          grep -q '^CONFIG_SQUASHFS=y
-          grep -q '^CONFIG_ZSMALLOC=y$' sadim/kernel/fragments/qemu-minimal.config
-          grep -q 'SADIM-LIVE-OK' sadim/initramfs/init
-          grep -Fq 'for dev in /dev/sr* /dev/sd*' sadim/initramfs/init
-          grep -q 'firmware-5.bin' sadim/initramfs/build.sh
-
-      - name: Verify key project documentation exists
-        run: |
-          test -f docs/adr/ADR-001-architecture.md
-          test -f docs/research/hardware-discovery.md
-          test -f docs/research/architecture-options.md
-          test -f docs/roadmap.md
-          test -f docs/known-issues.md
-          test -f docs/testing-strategy.md
-          test -f docs/usb-try-guide.md
-
-      - name: No committed secrets
-        run: |
-          if grep -riEn "(api[_-]?key|secret|password|token)[[:space:]]*[:=][[:space:]]*['\"][A-Za-z0-9]{16,}" \
-             --include='*.md' --include='*.yml' --include='*.sh' --include='*.py' . ; then
-            echo "::error::Potential secret found in tracked files"
-            exit 1
-          fi
-          echo "No secret-like assignments found."
- sadim/kernel/fragments/qemu-minimal.config
-          grep -q '^CONFIG_ZRAM=y
-          grep -q '^CONFIG_ZSMALLOC=y$' sadim/kernel/fragments/qemu-minimal.config
-          grep -q 'SADIM-LIVE-OK' sadim/initramfs/init
-          grep -Fq 'for dev in /dev/sr* /dev/sd*' sadim/initramfs/init
-          grep -q 'firmware-5.bin' sadim/initramfs/build.sh
-
-      - name: Verify key project documentation exists
-        run: |
-          test -f docs/adr/ADR-001-architecture.md
-          test -f docs/research/hardware-discovery.md
-          test -f docs/research/architecture-options.md
-          test -f docs/roadmap.md
-          test -f docs/known-issues.md
-          test -f docs/testing-strategy.md
-          test -f docs/usb-try-guide.md
-
-      - name: No committed secrets
-        run: |
-          if grep -riEn "(api[_-]?key|secret|password|token)[[:space:]]*[:=][[:space:]]*['\"][A-Za-z0-9]{16,}" \
-             --include='*.md' --include='*.yml' --include='*.sh' --include='*.py' . ; then
-            echo "::error::Potential secret found in tracked files"
-            exit 1
-          fi
-          echo "No secret-like assignments found."
- sadim/kernel/fragments/qemu-minimal.config
+          grep -q '^CONFIG_MISC_FILESYSTEMS=y$' sadim/kernel/fragments/qemu-minimal.config
+          grep -q '^CONFIG_SQUASHFS=y$' sadim/kernel/fragments/qemu-minimal.config
+          grep -q '^CONFIG_ZRAM=y$' sadim/kernel/fragments/qemu-minimal.config
           grep -q '^CONFIG_ZSMALLOC=y$' sadim/kernel/fragments/qemu-minimal.config
           grep -q 'SADIM-LIVE-OK' sadim/initramfs/init
           grep -Fq 'for dev in /dev/sr* /dev/sd*' sadim/initramfs/init
