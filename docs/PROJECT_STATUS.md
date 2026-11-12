@@ -1,90 +1,78 @@
 # PROJECT_STATUS — حالة المشروع الحية
 
-> آخر تحديث: 2026-11-11 — **بوابة المرحلة 2 منجزة + إصدار Live ISO v0.1.0-live منشأ فعلياً**.
+> آخر تحديث: 2026-11-12 — commit `41e64b8` (مراحل 4+5 مرفوعة، CI يُنفذ): نواة 6.12.117 + initramfs v0.3 + Buildroot rootfs (مرحلة 3) + واجهة weston (مرحلة 4) + Qt6base (مرحلة 5).
 
 ## المرحلة الحالية
 
-**المرحلة 2 ✅ مكتملة بالدليل — والمرحلة 8 (الإصدار) منجزة جزئياً: Live ISO منشأة ومرفوعة في Release رسمي.**
-**المرحلة 3 🔄 جارية الآن:** جذر حي عبر Buildroot LTS 2025.02.19 (musl+busybox) + init v0.3 (squashfs+overlayfs) + خدمات init.d + DHCP حقيقي — بوابة خاصة `sadim-phase3-rootfs`.
+**المرحلة 2 ✅ مكتملة بالدليل** — نواة 6.12.117-sadim-phase2/phase4 + initramfs + إقلاع QEMU (`SADIM-BOOT-OK` ×3).
+**المرحلة 8 (الإصدار) ✅ جزئي** — Live ISO v0.1.0-live منشأ ومرفوع في Release رسمي، اختبار إقلاع حقيقي ×3 نجح.
+**المرحلة 3 🔄 جارية** — Buildroot 2025.02.19 (musl) + init v0.3 (squashfs+overlayfs) + خدمات init.d + DHCP حقيقي — بوابة `sadim-phase3-rootfs` قيد التشغيل على CI.
+**المرحلة 4 🔄 جارية** — Weston (DRM+pixman) + seatd + eudev + virtio-gpu + QMP screendump — بوابة `sadim-phase4-gui` قيد التشغيل على CI.
+**المرحلة 5 🔄 جارية** — Qt6base (linuxfb، بلا OpenGL/EGL) + تطبيق اختبار RTL عربي — جزء من rootfs عبر Buildroot.
 
-| # | المرحلة | الحالة |
-|---|---|---|
-| 0 | فحص البيئة والعتاد | ✅ مكتملة (قياسات موثقة) |
-| 1 | Research + قرار ADR-001 | ✅ مكتملة (8 مصادر روابط) |
-| **2** | **نواة مبنية من المصدر + initramfs + إقلاع QEMU في CI** | ✅ **منجزة — `SADIM-BOOT-OK` ×3 في لوج CI حقيقي** |
-| 3 | rootfs + مستخدمون + صلاحيات + خدمات | 🔄 **جارية** — Buildroot 2025.02.19 (musl) + init v0.3 + خدمات init.d + DHCP؛ بوابة `sadim-phase3-rootfs` قيد التشغيل |
-| 4 | سطح المكتب المخصص (RTL/LTR) | ⏳ (قرار ADR-002 موثق) |
-| 5 | التطبيقات الأساسية | ⏳ |
-| 6 | العتاد والتعريفات على الجهاز الحقيقي | ⏳ — **الخطوة التالية: تجربة الفلاشة من المالك** |
-| 7 | الأداء والأمان | ⏳ |
-| 8 | إصدار ISO تجريبي | 🔄 **جزئي — `v0.1.0-live` منشأ + ISO مرفوعة + اختبار إقلاع حقيقي ×3؛ يتبقى التجريب على العتاد الحقيقي** |
+| # | المرحلة | الحالة | دليل الإتمام |
+|---|---|---|---|
+| 0 | فحص البيئة والعتاد | ✅ مكتملة | docs/research/hardware-discovery.md |
+| 1 | Research + قرار ADR-001 | ✅ مكتملة | docs/adr/ + docs/research/ |
+| **2** | **نواة مبنية من المصدر + initramfs + إقلاع QEMU في CI** | ✅ **منجزة** | `SADIM-BOOT-OK` ×3 — kernel-boot run #5 (43080783543) |
+| 3 | rootfs + مستخدمون + صلاحيات + خدمات | 🔄 **CI يعمل** | Buildroot 2025.02.19 +init v0.3 + خدمات + DHCP — بوابة `sadim-phase3-rootfs` |
+| 4 | سطح المكتب المخصص (RTL/LTR) | 🔄 **CI يعمل** | Wayland/weston + seatd + virtio-gpu — بوابة `sadim-phase4-gui` |
+| 5 | التطبيقات الأساسية | 🔄 **CI يعمل** | Qt6base linuxfb + تطبيق RTL تجريبي في `/opt/sadim-qt6-test/` |
+| 6 | العتاد والتعريفات على الجهاز الحقيقي | ⏳ | تنتظر تجربة الفلاشة من المالك (F12 Legacy) |
+| 7 | الأداء والأمان | ⏳ | قياسات RAM/إقلاع/IO + Threat Model — fase 7 |
+| 8 | إصدار ISO تجريبي | 🔄 **جزئي** | `v0.1.0-live` منشئ + ISO 5MB مرفوعة + إقلاع حقيقي ×3 (43080783447) |
 
-## ما تم تنفيذه فعلياً حتى الآن
+## ما تم تنفيذه فعلياً حتى الآن (commit `41e64b8`)
 
-- نواة **6.12.117 LTS مثبتة الإصدار** (تحقق kernel.org + SHA256 ضد `sha256sums.asc`) — fragment v0.2 يشمل PCI/SMP/ACPI/DRM+I915+fbcon/VGA/i8042/USB-HID/r8169/NET (دعم العتاد الفعلي **غير مُدَّعى** حتى تجربة الجهاز).
-- `sadim/initramfs/` — BusyBox 1.36.1 ثابت + **init v0.2**: proc/sys/devtmpfs، وسم `SADIM-BOOT-OK`، وضع CI (SADIM_CI=1 → إقلاع نظيف)، exec busybox init + inittab (getty tty1 autologin + ttyS0 تسلسلي) + طبقة /etc Live (passwd/group/os-release/motd…).
-- `sadim/iso/build-iso.sh` — **Live ISO هجين BIOS (CD + USB)** عبر xorriso + isolinux + isohdpfx؛ النظام يعمل كلياً في الذاكرة.
-- `sadim/ci/boot-test-iso.sh` — بوابة إقلاع عبر **المسار الحقيقي SeaBIOS→isolinux→init** ×3.
-- Workflows: `ci.yml` (lint + بوابة YAML)، `kernel-boot.yml` (بوابة `-kernel`)، `live-iso.yml` (بناء ISO + بوابة المسار الحقيقي).
-- ADR-001/002/003 + دليل تجربة USB + سجل مشاكل معروفة — كلها مرفوعة.
+- نواة **6.12.117 LTS** مثبتة الإصدار (تحقق kernel.org + SHA256 ضد `sha256sums.asc`) — fragment v0.4 يشمل PCI/SMP/ACPI/DRM+i915+fbcon/VGA/i8042/USB-HID/r8169/NET + VIRTIO_GPU + squashfs/overlay/iso9660 + وسائط live حقيقية (ATA/SCSI/USB_STORAGE).
+- `sadim/initramfs/` — BusyBox 1.36.1 ثابت + **init v0.3**: proc/sys/devtmpfs، وسم `SADIM-BOOT-OK`، وضع CI (SADIM_CI=1 → إقلاع نظيف)، مسار live rootfs (squashfs+overlayfs+switch_root)، طبقة /etc Live.
+- `sadim/rootfs/` — Buildroot 2025.02.19 (musl+C++، locale، dynamic libs) مع overlay سديم واحد للحقيقة: passwd/group (root, sadim, seatd)، inittab، rcS، خدمات init.d (S05-logging, S10-network, S20-seatd, S30-weston, S99-ci-end).
+- حزم المرحلة 4 في rootfs: weston 14.0.1 (DRM backend, pixman renderer), seatd, eudev, wayland, wayland-protocols, libinput, libdrm, libdisplay-info, libxkbcommon, xkeyboard-config, cairo, pixman, freetype, harfbuzz, fribidi, fontconfig.
+- حزم المرحلة 5 في rootfs: Qt6base (core/gui/widgets/network/sql/sqlite/xml/test, linuxfb QPA, fontconfig, harfbuzz, png, jpeg).
+- تطبيق اختبار Qt6 RTL في `/opt/sadim-qt6-test/main.cpp` + build.sh.
+- `sadim/iso/build-iso.sh` — Live ISO هجين BIOS (CD + USB) عبر xorriso + isolinux + isohdpfx.
+- Workflows: `ci.yml` (lint + YAML gate)، `kernel-boot.yml` (مرحلة 2)، `rootfs.yml` (مرحلة 3)، `live-iso.yml` (الإصدار)، `gui.yml` (مرحلة 4 مع QMP socat).
+- ADR-001/002/003/004 + دليل تجربة USB + سجل مشاكل معروفة — كلها مرفوعة.
 
 ## ما تم اختباره ونتائجه (سلسلة CI الحقيقية)
 
 | الاختبار | النتيجة | الدليل |
 |---|---|---|
 | CI lint + بوابة سلامة YAML | ✅ success | run 43073334253 |
-| kernel-boot run #1 | ❌ startup — YAML: «: » غير مقتبس | run 43073326178 → إصلاح `1bd5a5e` |
-| kernel-boot run #2 | ❌ initramfs — applet `tc` لا يترجم (بنى CBQ مُزالة من UAPI) | إصلاح `53d16e4` |
-| kernel-boot run #3 | ❌ initramfs — busybox kconfig بلا `olddefconfig` | إصلاح (داخل `ee838c5`) |
-| kernel-boot run #4 | ❌ initramfs — `yes\|oldconfig` + pipefail = broken pipe | run 43079186914 → إصلاح `3d59d8c` |
-| **kernel-boot run #5** | ✅ **نجاح كامل: نواة 6.12.117-sadim-phase2 + init v0.2 + SADIM-BOOT-OK ×3** (كل إقلاع ≈3 ثوانٍ TCG؛ MemTotal 245088 kB) | run 43080783543, job 130732469698 |
-| **live-iso run #2** | ✅ **نجاح كامل: ISO بنيت فعلياً (5,242,880 bytes) وقلعت ×3 عبر SeaBIOS→isolinux→init** | run 43080783447, job 130732457484 |
-| **CI-5 بوابة بصمة BusyBox: kernel-boot run #6 + live-iso run #3** | ✅ **`busybox-1.36.1.tar.bz2: OK`** في اللوج — التثبيت يُفرض فعلياً | runs 43085770179 + 43085770298 |
+| kernel-boot run #5 | ✅ نجاح كامل | `6.12.117-sadim-phase2` + `SADIM-BOOT-OK` ×3 | run 43080783543 |
+| live-iso run #2 | ✅ نجاح كامل | ISO 5,242,880 bytes، إقلاع ×3 عبر SeaBIOS→isolinux→init | run 43080783447 |
+| CI-5 بوابة بصمة BusyBox | ✅ `busybox-1.36.1.tar.bz2: OK` | runs 43085770179 + 43085770298 |
+| **sadim-phase3-rootfs (commit 41e64b8)** | 🔄 قيد التشغيل | 4 علامات ×3: BOOT, LIVE, ROOTFS, NET |
+| **sadim-phase4-gui (commit 41e64b8)** | 🔄 قيد التشغيل | 5 علامات ×3: + GUI عبر QMP screendump |
+| **sadim-live-iso (commit 41e64b8)** | 🔄 قيد التشغيل | ISO كاملة + إقلاع حقيقي عبر المسار الحقيقي |
+| **sadim-ci (commit 41e64b8)** | 🔄 قيد التشغيل | lint + بوابة YAML +秘密الفحص |
 
-**حدود الصدق:** نجاح CI = بناء + إقلاع في QEMU فقط. **لم يُختبر بعد** أي شيء على العتاد الحقيقي (عرض/لوحة مفاتيح/لمس/إيثرنت/Wi-Fi) — ذلك نتيجة تجربة الفلاشة القادمة.
+## حدود الصدق
 
-## ما فشل وسبب الفشل (وسبب الإصلاح)
-
-1. `create_repository` عبر MCP → 403 → حُلّ عبر GitHub API باعتماد GCM (توكن في الذاكرة فقط).
-2. run #1 startup failure → اسم خطوة بـ «: » غير مقتبس (تحقق PyYAML) → `1bd5a5e` + بوابة YAML دائمة.
-3. run #2 → `tc.c:256 struct tc_cbq_lssopt` → تعطيل applet `tc` (غير مطلوب) → `53d16e4`.
-4. run #3 → `olddefconfig: invalid target` → oldconfig بإجابات افتراضية (داخل `ee838c5`).
-5. run #4 → `yes: standard output: Broken pipe` + pipefail → إزالة خطوة إعادة التوليد كلياً (تعديلات sed على رموز موجودة كافية) → `3d59d8c`.
-
-## الملفات (بنية نهاية المرحلة 2)
-
-- `sadim/kernel/{version.mk,build.sh,fragments/qemu-minimal.config}` — تثبيت إصدار + SHA256 + دمج fragment.
-- `sadim/initramfs/{build.sh,init,rootfs/}` — BusyBox + init v0.2 + طبقة /etc.
-- `sadim/iso/build-iso.sh` + `sadim/ci/{boot-test.sh,boot-test-iso.sh}` — ISO + البوابتان.
-- `docs/`: ADR-001/002/003، `PROJECT_STATUS`، `roadmap`، `testing-strategy`، `known-issues`، `usb-try-guide`، بحوث عتاد/معمارية.
-
-## حالة GitHub Repository
-
-- **`omar-priv/omaros1`** — Private — https://github.com/omar-priv/omaros1 — فرع `main`، بلا force push.
-- الأسرار: فحص CLEAN؛ لا مفاتيح/توكنات في المستودع؛ توكن API في الذاكرة فقط.
-
-## آخر Commits
-
-- `3d59d8c` — إصلاح خطوة إعادة تكوين busybox (pipefail/broken pipe)
-- `215149a` — ADR-003 (init/خدمات)
-- `1a8d5a1` — دليل تجربة USB
-
-## روابط Workflows / Artifacts / Releases
-
-- Workflows: lint ✅ + `sadim-phase2-boot` ✅ (run #5) + `sadim-live-iso` ✅ (run #2).
-- Artifacts: `sadim-live-iso-43080783447` (bzImage 3.0MB + initramfs 1.3MB + sadim.iso 5MB + boot logs) — نُزِّل محلياً إلى `artifacts/iso-v0.1/`.
-- **Release: `v0.1.0-live`** — https://github.com/omar-priv/omaros1/releases/tag/v0.1.0-live
-  - أصل التحميل: **`sadim-0.1-live-bios.iso` (5MB)** — https://github.com/omar-priv/omaros1/releases/download/v0.1.0-live/sadim-0.1-live-bios.iso
+نجاح CI = بناء + إقلاع في QEMU فقط. **لم يُختبر بعد** أي شيء على العتاد الحقيقي (عرض i915، لوحة مفاتيح/لمس i8042، إيثرنت r8169، Wi-Fi QCA9377، صوت) — ذلك نتيجة تجربة الفلاشة القادمة من المالك.
 
 ## ما تبقى من العمل (بترتيب أولوية)
 
-1. **تجربة الفلاشة على الجهاز الحقيقي** (فعل المالك الوحيد: Rufus DD/Etcher + F12 Legacy) — يجيب: عرض i915؟ لوحة مفاتيح/لمس؟ إيثرنت r8169؟
-2. تثبيت hash تربل BusyBox في known-issues (من أول تشغيل ناجح) ثم إغلاق ENV-1.
-3. v0.2 من ISO: Wi-Fi (ath10k + firmware-5.bin مثبت المصدر) + صوت (snd_hda) + squashfs إن لزم.
-4. المرحلة 3: Buildroot rootfs + مستخدمون/صلاحيات + خدمات + سجلات (تصميم ADR-003).
-5. المرحلة 4+ وفق ADR-002 (Wayland/weston + Qt6 + عربية RTL).
+1. **مراقبة نتائج CI** لـ commit `41e64b8` — التأكد من مرور بوابات rootfs (4 علامات ×3) و gui (5 علامات ×3) و live-iso.
+2. **تجربة الفلاشة على الجهاز الحقيقي** (فعل المالك فقط: Rufus DD/Etcher + F12 Legacy) — تجيب: عرض i915؟ لوحة مفاتيح/لمس؟ إيثرنت؟ تسجيل النتائج في known-issues/PROJECT_STATUS.
+3. **مرحلة 6:** تعريفات العتاد على الجهاز الحقيقي (ath10k + firmware-5.bin، snd_hda، طاقة، بطارية).
+4. **مرحلة 7:** قياسات الأداء والأمان (RAM ≤ 1GB خمول، زمن إقلاع، صفر كتابات عشوائية على SMR، ثغرات الصلاحيات).
+5. **مرحلة 8:** إصدار v0.2 من ISO مع تجميع كل المراحل + توثيق USB نهائي.
 
 ## ما يحتاج تدخل المالك
 
-- **فعل واحد فقط:** نسخ `sadim-0.1-live-bios.iso` إلى فلاشة وفق `docs/usb-try-guide.md` وإقلاعها (F12 → Legacy). ثم إخبارنا بما يظهر على الشاشة (أو صورة له).
-- لا شيء آخر — كل ما هو مطلوب قيد التنفيذ تلقائياً.
+- فعل واحد: نسخ `sadim-0.1-live-bios.iso` (أو إصدار لاحق) إلى فلاشة وفق `docs/usb-try-guide.md` وإقلاعها (F12 → Legacy)، ثم الإبلاغ بما يظهر.
+- مراقبة CI: إذا فشلت أي بوابة، يتم إصلاح السبب من المنبع وإعادة الدفع.
+
+## روابط Workflows / Artifacts / Releases
+
+- Workflows: `sadim-ci` + `sadim-phase2-boot` + `sadim-phase3-rootfs` + `sadim-phase4-gui` + `sadim-live-iso` (جميعها على main).
+- **Release: `v0.1.0-live`** — https://github.com/omar-priv/omaros1/releases/tag/v0.1.0-live
+  - أصل التحميل: **`sadim-0.1-live-bios.iso` (5MB)** — https://github.com/omar-priv/omaros1/releases/download/v0.1.0-live/sadim-0.1-live-bios.iso
+
+## آخر Commits
+
+- `41e64b8` — Phase 4+5: weston/seatd/eudev + Qt6base linuxfb + seatd user + VIRTIO_GPU kernel fragment
+- `fec2421` — Phase 5: Qt6base (linuxfb backend) + Arabic RTL test app
+- `07bf757` — Phase 4: GUI stack (weston DRM+pixman, seatd, eudev) + virtio-gpu + QMP screendump gate
+- `036fd1b` — ISO v0.2 integration: live rootfs mandatory in image

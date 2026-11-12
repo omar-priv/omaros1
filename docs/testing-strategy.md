@@ -10,10 +10,12 @@
 | Docs/Repo Lint | سلامة هيكل المشروع والوثائق | CI (ubuntu) | ✅ تعمل الآن (ci.yml) |
 | Unit | وحدات userland/أدواتنا | CI | 🔜 Phase 3+ |
 | Integration | initramfs/init يقرأ كونفيغ ويقيم الخدمات | CI + QEMU | 🔜 Phase 3-4 |
-| **Boot Test** | النواة تقلع، init يعمل، طابور إدخال حي | CI + QEMU `-nographic` | 🔜 Phase 2 (بوابة: ظهور `SADIM-BOOT-OK`) |
-| System | الواجهة تعمل فعلياً (إطار يُرسم، إدخال يستجيب) | QEMU بصورة كاملة | 🔜 Phase 4-5 |
-| Performance | قياسات RAM/إقلاع/IO قبل وبعد كل تغيير مؤثر | QEMU ثم عتاد حي | 🔜 Phase 6 |
-| Hardware | QCA9377/صوت/لمس/طاقة/USB على العتاد الحقيقي | USB Live (بموافقة صريحة) | 🔜 Phase 7 |
+| **Boot Test** | النواة تقلع، init يعمل، طابور إدخال حي | CI + QEMU `-nographic` | ✅ Phase 2 — `SADIM-BOOT-OK` ×3 (run #5) |
+| System | الجذر الحي يعمل (squashfs+overlay+switch_root + خدمات + DHCP) | CI + QEMU virtio | 🔄 Phase 3 — بوابة `sadim-phase3-rootfs` (4 علامات ×3) قيد التشغيل |
+| System GUI | واجهة Weston تُرسَى فعلياً (بكسلات عبر QMP screendump) | CI + QEMU virtio-gpu | 🔄 Phase 4 — بوابة `sadim-phase4-gui` (5 علامات ×3) قيد التشغيل |
+| System Apps | Qt6base linuxfb يُبنى في rootfs + تطبيق RTL تجريبي | CI + QEMU | 🔄 Phase 5 — جزء منBuildroot rootfs |
+| Performance | قياسات RAM/إقلاع/IO قبل وبعد كل تغيير مؤثر | QEMU ثم عتاد حي | 🔜 Phase 6-7 |
+| Hardware | QCA9377/صوت/لمس/طاقة/USB على العتاد الحقيقي | USB Live (بموافقة صريحة) | ⏳ تنتظر تجربة المالك |
 | Security | حدود الصلاحيات، سلامة الحزم، Threat Model | CI + مراجعة | 🔜 تدريجياً من Phase 4 |
 | Regression/Recovery | إعادة تشغيل بعد أعطال، سلامة بيانات | CI + QEMU | 🔜 من Phase 4 |
 
