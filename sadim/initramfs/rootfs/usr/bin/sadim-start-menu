@@ -1,0 +1,172 @@
+#!/usr/bin/env qt6-linuxfb
+// Sadim OS — Start Menu (Windows 10 Style)
+// قائمة 시작 الشبيهة بـ Windows 10 Start Menu
+// واجهة مسطحة، حواف حادة، تطبيقات أساسية مرتبة
+
+#include <QApplication>
+#include <QWidget>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QPushButton>
+#include <QLabel>
+#include <QFrame>
+#include <QFontDatabase>
+#include <QDesktopWidget>
+
+class StartMenu : public QWidget {
+    Q_OBJECT
+public:
+    StartMenu() {
+        setWindowFlags(Qt::FramelessWindowHint | Qt::Popup | Qt::WindowStaysOnTopHint);
+        setFixedSize(350, 500);
+        setAttribute(Qt::WA_TranslucentBackground, false);
+
+        // Windows 10 Start Menu StyleSheet
+        setStyleSheet(R"(
+            QWidget#startMenu {
+                background-color: #f0f0f0;
+                border: 1px solid #d0d0d0;
+                border-radius: 0px; /* Windows 10 Sharp Corners */
+            }
+            QLabel#userLabel {
+                color: #333333;
+                font-size: 14px;
+                font-weight: bold;
+                padding: 10px;
+                background-color: #e0e0e0;
+                border-bottom: 1px solid #d0d0d0;
+            }
+            QLabel#appsLabel {
+                color: #666666;
+                font-size: 12px;
+                padding: 5px 10px;
+                background-color: #f0f0f0;
+                border-bottom: 1px solid #d0d0d0;
+            }
+            QPushButton {
+                background-color: #f0f0f0;
+                color: #333333;
+                border: none;
+                border-bottom: 1px solid #e0e0e0;
+                text-align: left;
+                padding: 10px;
+                font-size: 13px;
+                min-height: 40px;
+            }
+            QPushButton:hover {
+                background-color: #0078D7;
+                color: white;
+            }
+            QPushButton:pressed {
+                background-color: #005a9e;
+            }
+            QPushButton#powerBtn {
+                background-color: #f0f0f0;
+                color: #e53935;
+                border-top: 1px solid #d0d0d0;
+                text-align: left;
+                padding: 10px;
+                font-size: 13px;
+                min-height: 40px;
+            }
+            QPushButton#powerBtn:hover {
+                background-color: #ffe0e0;
+                color: #c62828;
+            }
+        )");
+
+        QVBoxLayout *mainLayout = new QVBoxLayout(this);
+        mainLayout->setContentsMargins(0, 0, 0, 0);
+        mainLayout->setSpacing(0);
+
+        // قسم المستخدم (مثل Windows 10)
+        QLabel *userLabel = new QLabel("sadim — المستخدم");
+        userLabel->setObjectName("userLabel");
+        mainLayout->addWidget(userLabel);
+
+        // قسم التطبيقات الأساسية
+        QLabel *appsLabel = new QLabel("التطبيقات");
+        appsLabel->setObjectName("appsLabel");
+        mainLayout->addWidget(appsLabel);
+
+        const QStringList appNames = {
+            "مستكشف الملفات (File Explorer)",
+            "المفكرة (Notepad)",
+            "الحاسبة (Calculator)",
+            "مدير المهام (Task Manager)",
+            "الإعدادات (Settings)",
+            "متصفح الويب (Browser)",
+            "إدارة الملفات (File Manager)",
+            "محطة الأوامر (Terminal)"
+        };
+
+        for (const QString &appName : appNames) {
+            QPushButton *btn = new QPushButton(appName);
+            btn->setMinimumHeight(40);
+            connect(btn, &QPushButton::clicked, this, [this, appName]() {
+                launchApp(appName);
+            });
+            mainLayout->addWidget(btn);
+        }
+
+        mainLayout->addStretch();
+
+        // زر الطاقة (مثل Windows 10)
+        QPushButton *powerBtn = new QPushButton("إيقاف التشغيل (Power)");
+        powerBtn->setObjectName("powerBtn");
+        connect(powerBtn, &QPushButton::clicked, this, &StartMenu::onPower);
+        mainLayout->addWidget(powerBtn);
+
+        // إغلاق القائمة عند النقر خارجها
+        installEventFilter(this);
+    }
+
+protected:
+    bool eventFilter(QObject *obj, QEvent *event) override {
+        if (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::KeyPress) {
+            hide();
+            return true;
+        }
+        return QWidget::eventFilter(obj, event);
+    }
+
+private slots:
+    void launchApp(const QString &appName) {
+        hide();
+        if (appName.contains("مستكشف الملفات")) {
+            QProcess::startDetached("/usr/bin/sadim-file-explorer");
+        } else if (appName.contains("المفكرة")) {
+            QProcess::startDetached("/usr/bin/sadim-notepad");
+        } else if (appName.contains("الحاسبة")) {
+            QProcess::startDetached("/usr/bin/sadim-calculator");
+        } else if (appName.contains("مدير المهام")) {
+            QProcess::startDetached("/usr/bin/sadim-task-manager");
+        } else if (appName.contains("محطة الأوامر")) {
+            QProcess::startDetached("/bin/sh");
+        } else {
+            qDebug() << "[start-menu] تطبيق غير جاهز بعد:" << appName;
+        }
+    }
+
+    void onPower() {
+        hide();
+        QProcess::startDetached("poweroff");
+    }
+
+#include "moc_startmenu.cpp"
+};
+
+int main(int argc, char *argv[])
+{
+    QApplication app(argc, argv);
+    app.setApplicationName("Sadim Start Menu");
+    app.setApplicationVersion("0.2-daily");
+
+    QFont font("Segoe UI", 10);
+    if (!font.exactMatch()) font = QFont("DejaVu Sans", 10);
+    app.setFont(font);
+
+    StartMenu menu;
+    menu.show();
+    return app.exec();
+}

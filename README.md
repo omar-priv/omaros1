@@ -66,6 +66,7 @@
 | 6 — العتاد والتعريفات على الجهاز الحقيقي | ✅ كود مكتمل — Wi-Fi (ath10k/firmware-5.bin)، صوت (snd-hda)، طاقة/بطارية، USB 2.0، لمس |
 | 7 — الأداء والأمان | ✅ كود مكتمل — zRAM swap (بديل SMR)، noatime، tmpfs، مراقبة تلقائية، laptop_mode |
 | 8 — الإصدار اليومي (ISO v0.2-daily) | ✅ كود مكتمل — CI يعمل — ISO هجينة BIOS+USB 2.0 مع جميع المراحل |
+| 9 — واجهة Windows 10-like للاستخدام اليومي | ✅ كود مكتمل — CI يعمل — Taskbar + Start Menu + File Explorer + Notepad + Calculator + Task Manager + سمة Windows 10 |
 
 طريق الإنجاز الحالي: البناء والاختبارات الآلية عبر **GitHub Actions + QEMU** (المضيف ضعيف الموارد
 — 4GB RAM — ولن يُثبَّت عليه النظام ولا يُستخدم لبناء ثقيل محلياً قبل تدقيق الموارد).

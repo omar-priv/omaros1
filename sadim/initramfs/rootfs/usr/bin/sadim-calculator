@@ -1,0 +1,261 @@
+#!/usr/bin/env qt6-linuxfb
+// Sadim OS — Calculator (Windows 10 Style)
+// تطبيق حاسبة شبيه بـ Windows Calculator للمستخدم المبتدئ
+// واجهة مسطحة، أزرار كبيرة، دعم العمليات الحسابية الأساسية
+
+#include <QApplication>
+#include <QMainWindow>
+#include <QWidget>
+#include <QGridLayout>
+#include <QPushButton>
+#include <QLabel>
+#include <QVBoxLayout>
+#include <QMenuBar>
+#include <QAction>
+#include <QStatusBar>
+#include <QFontDatabase>
+#include <cmath>
+#include <QString>
+
+class Calculator : public QMainWindow {
+    Q_OBJECT
+public:
+    Calculator() {
+        setWindowTitle("س dvor — الحاسبة (Sadim Calculator)");
+        resize(320, 480);
+        setFixedSize(320, 480);
+
+        QFont font("Segoe UI", 12);
+        if (!font.exactMatch()) font = QFont("DejaVu Sans", 12);
+        setFont(font);
+
+        // Windows 10 Calculator StyleSheet
+        setStyleSheet(R"(
+            QMainWindow { background-color: #f0f0f0; border: none; }
+            QMenuBar { background-color: #f0f0f0; color: #333333; border-bottom: 1px solid #d0d0d0; padding: 2px; }
+            QMenuBar::item { background: transparent; padding: 4px 8px; border: 1px solid transparent; }
+            QMenuBar::item:selected { background-color: #0078D7; color: white; border: 1px solid #005a9e; }
+            QPushButton {
+                background-color: #e0e0e0;
+                color: #000000;
+                border: 1px solid #d0d0d0;
+                border-radius: 0px; /* Windows 10 Sharp Corners */
+                min-width: 60px;
+                min-height: 60px;
+                font-size: 16px;
+                font-weight: bold;
+            }
+            QPushButton:hover { background-color: #d0d0d0; border: 1px solid #0078D7; }
+            QPushButton:pressed { background-color: #c0c0c0; }
+            QPushButton#operatorBtn { background-color: #0078D7; color: white; border: 1px solid #005a9e; }
+            QPushButton#operatorBtn:hover { background-color: #005a9e; }
+            QPushButton#equalsBtn { background-color: #0078D7; color: white; border: 1px solid #005a9e; font-size: 20px; }
+            QPushButton#equalsBtn:hover { background-color: #005a9e; }
+            QLabel#display {
+                background-color: #000000;
+                color: #00ff00;
+                border: 1px solid #333333;
+                padding: 10px;
+                font-family: 'Consolas', 'DejaVu Sans Mono';
+                font-size: 32px;
+                qproperty-alignment: AlignRight;
+            }
+            QStatusBar { background-color: #f0f0f0; color: #666666; border-top: 1px solid #d0d0d0; }
+        )");
+
+        // الشاشة (Display)
+        QWidget *central = new QWidget();
+        QVBoxLayout *mainLayout = new QVBoxLayout(central);
+        mainLayout->setContentsMargins(10, 10, 10, 10);
+        mainLayout->setSpacing(8);
+
+        m_display = new QLabel("0");
+        m_display->setObjectName("display");
+        m_display->setMinimumHeight(80);
+        mainLayout->addWidget(m_display);
+
+        m_memoryLabel = new QLabel("");
+        m_memoryLabel->setStyleSheet("color: #666666; font-size: 12px; padding: 2px;");
+        m_memoryLabel->setMinimumHeight(20);
+        mainLayout->addWidget(m_memoryLabel);
+
+        // الأزرار (Grid)
+        QGridLayout *grid = new QGridLayout();
+        grid->setSpacing(6);
+
+        const QStringList btnLabels = {
+            "MC", "MR", "M-", "M+",
+            "7", "8", "9", "/",
+            "4", "5", "6", "*",
+            "1", "2", "3", "-",
+            "0", ".", "=", "+"
+        };
+
+        int row = 0, col = 0;
+        for (const QString &label : btnLabels) {
+            QPushButton *btn = new QPushButton(label);
+            btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+            if (label == "+" || label == "-" || label == "*" || label == "/") {
+                btn->setObjectName("operatorBtn");
+            }
+            if (label == "=") {
+                btn->setObjectName("equalsBtn");
+            }
+
+            grid->addWidget(btn, row, col);
+            connect(btn, &QPushButton::clicked, this, [this, label]() { onButtonClicked(label); });
+
+            col++;
+            if (col > 3) { col = 0; row++; }
+        }
+
+        // زر C (Clear) منفصل
+        QPushButton *clearBtn = new QPushButton("C");
+        clearBtn->setObjectName("operatorBtn");
+        clearBtn->setStyleSheet("QPushButton#operatorBtn { background-color: #e53935; color: white; } QPushButton#operatorBtn:hover { background-color: #c62828; }");
+        connect(clearBtn, &QPushButton::clicked, this, &Calculator::onClear);
+        grid->addWidget(clearBtn, row, 0, 1, 4); // يمتد على 4 أعمدة
+
+        mainLayout->addLayout(grid);
+        setCentralWidget(central);
+
+        // قائمة التطبيق
+        QMenuBar *menuBar = this->menuBar();
+        QMenu *viewMenu = menuBar->addWindowTitle("عرض (&View)");
+        QAction *standardAction = viewMenu->addAction("عادي (Standard)");
+        QAction *scientificAction = viewMenu->addAction("علمي (Scientific)");
+        QObject::connect(standardAction, &QAction::triggered, [this]() { setFixedSize(320, 480); });
+        QObject::connect(scientificAction, &QAction::triggered, [this]() { setFixedSize(450, 480); });
+
+        QMenu *helpMenu = menuBar->addWindowTitle("مساعدة (&Help)");
+        QAction *aboutAction = helpMenu->addAction("حول (About)");
+        QObject::connect(aboutAction, &QAction::triggered, []() {
+            QMessageBox::about(nullptr, "حول الحاسبة",
+                "Sadim OS Calculator v0.2-daily\n"
+                "واجهة شبيهة بـ Windows Calculator للمستخدم المبتدئ\n"
+                "بنيت على Qt6 + Wayland/weston");
+        });
+
+        // شريط الحالة
+        statusBar()->showMessage("الحاسبة جاهزة — العمليات الأساسية مدعومة");
+
+        resetState();
+    }
+
+private slots:
+    void onButtonClicked(const QString &label) {
+        if (label == "=") {
+            onEquals();
+            return;
+        }
+
+        if (label == ".") {
+            if (!m_current.contains('.')) m_current.append(".");
+            m_display->setText(m_current);
+            return;
+        }
+
+        // أرقام
+        bool ok;
+        label.toDouble(&ok);
+        if (ok) {
+            if (m_current == "0" || m_waitingForOperand) {
+                m_current = label;
+                m_waitingForOperand = false;
+            } else {
+                m_current.append(label);
+            }
+            m_display->setText(m_current);
+            return;
+        }
+
+        // عمليات
+        if (label == "+" || label == "-" || label == "*" || label == "/") {
+            if (!m_waitingForOperand && !m_current.isEmpty()) {
+                onEquals();
+            }
+            m_pendingOp = label;
+            m_pendingValue = m_current.toDouble();
+            m_waitingForOperand = true;
+            m_memoryLabel->setText(m_current + " " + label);
+            return;
+        }
+
+        // دوال الذاكرة
+        if (label == "MC") { m_memory = 0; m_memoryLabel->setText(""); }
+        else if (label == "MR") { m_current = QString::number(m_memory); m_display->setText(m_current); m_waitingForOperand = true; }
+        else if (label == "M+") { m_memory += m_current.toDouble(); }
+        else if (label == "M-") { m_memory -= m_current.toDouble(); }
+    }
+
+    void onClear() {
+        m_current = "0";
+        m_pendingValue = 0;
+        m_pendingOp = "";
+        m_waitingForOperand = false;
+        m_display->setText("0");
+        m_memoryLabel->setText("");
+    }
+
+    void onEquals() {
+        if (m_pendingOp.isEmpty() || m_waitingForOperand) return;
+
+        double currentVal = m_current.toDouble();
+        double result = 0;
+
+        if (m_pendingOp == "+") result = m_pendingValue + currentVal;
+        else if (m_pendingOp == "-") result = m_pendingValue - currentVal;
+        else if (m_pendingOp == "*") result = m_pendingValue * currentVal;
+        else if (m_pendingOp == "/") {
+            if (currentVal == 0) {
+                QMessageBox::warning(this, "خطأ", "لا يمكن القسمة على صفر");
+                onClear();
+                return;
+            }
+            result = m_pendingValue / currentVal;
+        }
+
+        // تنسيق النتيجة (إزالةzeros غير ضرورية)
+        QString resultStr = QString::number(result, 'g', 15);
+        m_display->setText(resultStr);
+        m_current = resultStr;
+        m_memoryLabel->setText("");
+        m_pendingOp = "";
+        m_waitingForOperand = true;
+    }
+
+    void resetState() {
+        m_current = "0";
+        m_pendingValue = 0;
+        m_pendingOp = "";
+        m_waitingForOperand = false;
+        m_memory = 0;
+    }
+
+private:
+    QLabel *m_display;
+    QLabel *m_memoryLabel;
+    QString m_current;
+    QString m_pendingOp;
+    double m_pendingValue;
+    bool m_waitingForOperand;
+    double m_memory;
+};
+
+#include "moc_calculator.cpp"
+
+int main(int argc, char *argv[])
+{
+    QApplication app(argc, argv);
+    app.setApplicationName("Sadim Calculator");
+    app.setApplicationVersion("0.2-daily");
+
+    QFont font("Segoe UI", 10);
+    if (!font.exactMatch()) font = QFont("DejaVu Sans", 10);
+    app.setFont(font);
+
+    Calculator calc;
+    calc.show();
+    return app.exec();
+}

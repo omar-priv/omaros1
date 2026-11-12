@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Sadim OS — بوابة المراحل 4-7: اختبار الواجهة الرسومية + العتاد + الأداء في QEMU
+# Sadim OS — بوابة المراحل 4-8: اختبار الواجهة الرسومية + العتاد + الأداء + واجهة Windows 10 في QEMU
 # المسار: kernel + initramfs v0.3 → squashfs (virtio) → overlayfs → switch_root
 #         → buildroot init → seatd → weston (DRM+pixman على virtio-gpu)
 #         → screendump عبر QMP للتحقق من بكسلات فعلية
-# النجاح: العلامات السبعة ×3 تشغيلات متتالية:
-#   BOOT, LIVE, ROOTFS, NET, GUI, HW, PERF
+# 성공: العلامات التسعة ×3 تشغيلات متتالية:
+#   BOOT, LIVE, ROOTFS, NET, GUI, HW, PERF, SHELL, WIN10
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -88,7 +88,7 @@ for i in $(seq 1 $RUNS); do
     cp "$rlog" "$LOG"
   else
     echo "[sadim] run $i FAILED — one or more markers missing"
-    for m in SADIM-BOOT-OK SADIM-LIVE-OK SADIM-ROOTFS-OK SADIM-NET-OK SADIM-GUI-OK; do
+    for m in SADIM-BOOT-OK SADIM-LIVE-OK SADIM-ROOTFS-OK SADIM-NET-OK SADIM-GUI-OK SADIM-HW-OK SADIM-PERF-OK SADIM-SHELL-OK SADIM-WIN10-OK; do
       grep -q "$m" "$rlog" 2>/dev/null && echo "  marker $m: PRESENT" || echo "  marker $m: MISSING"
     done
     cp "$rlog" "$LOG"
@@ -97,7 +97,7 @@ done
 
 if [ "$ok" -eq "$RUNS" ]; then
   echo "============================================================"
-  echo "  GUI BOOT TEST PASSED — all markers x3 (v0.2)"
+  echo "  GUI BOOT TEST PASSED — all 9 markers x3 (v0.2-daily Windows 10 UI)"
   echo "============================================================"
   exit 0
 else

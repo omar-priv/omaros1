@@ -1,0 +1,189 @@
+#!/usr/bin/env qt6-linuxfb
+// Sadim OS — Notepad (Windows 10 Style)
+// تطبيق مفكرة شبيه بـ Windows Notepad للمستخدم المبتدئ
+// واجهة مسطحة، حواف حادة، دعم RTL/LTR للعربية والإنجليزية
+
+#include <QApplication>
+#include <QMainWindow>
+#include <QPlainTextEdit>
+#include <QMenuBar>
+#include <QAction>
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QFontDialog>
+#include <QStatusBar>
+#include <QTextCursor>
+#include <QFile>
+#include <QTextStream>
+#include <QFontDatabase>
+
+static QString g_currentFile;
+
+int main(int argc, char *argv[])
+{
+    QApplication app(argc, argv);
+    app.setApplicationName("Sadim Notepad");
+    app.setApplicationVersion("0.2-daily");
+
+    QFont font("Segoe UI", 11);
+    if (!font.exactMatch()) font = QFont("DejaVu Sans", 11);
+    app.setFont(font);
+
+    // Windows 10 Flat StyleSheet
+    app.setStyleSheet(R"(
+        QMainWindow { background-color: #ffffff; border: none; }
+        QMenuBar { background-color: #f0f0f0; color: #333333; border-bottom: 1px solid #d0d0d0; padding: 2px; }
+        QMenuBar::item { background: transparent; padding: 4px 8px; border: 1px solid transparent; }
+        QMenuBar::item:selected { background-color: #0078D7; color: white; border: 1px solid #005a9e; }
+        QPlainTextEdit { background-color: #ffffff; color: #000000; border: 1px solid #d0d0d0; font-family: 'Consolas', 'DejaVu Sans Mono'; font-size: 11px; }
+        QStatusBar { background-color: #f0f0f0; color: #666666; border-top: 1px solid #d0d0d0; }
+        QMessageBox { background-color: #f0f0f0; }
+        QPushButton { background-color: #f0f0f0; border: 1px solid #d0d0d0; padding: 4px 12px; min-width: 70px; }
+        QPushButton:hover { background-color: #e0e0e0; border: 1px solid #0078D7; }
+        QPushButton:pressed { background-color: #d0d0d0; }
+    )");
+
+    QMainWindow window;
+    window.setWindowTitle("س dvor — المفكرة (Sadim Notepad)");
+    window.resize(800, 600);
+
+    QPlainTextEdit *textEdit = new QPlainTextEdit();
+    textEdit->setPlaceholderText("اكتب ملاحظاتك هنا… (يدعم العربية والإنجليزية)");
+    textEdit->setLineWrapMode(QPlainTextEdit::WidgetWidth);
+    window.setCentralWidget(textEdit);
+
+    // قائمة الملف
+    QMenuBar *menuBar = window.menuBar();
+    QMenu *fileMenu = menuBar->addWindowTitle("ملف (&File)");
+    QAction *newAction = fileMenu->addAction("جديد (&New)\tCtrl+N");
+    QAction *openAction = fileMenu->addAction("فتح (&Open)\tCtrl+O");
+    QAction *saveAction = fileMenu->addAction("حفظ (&Save)\tCtrl+S");
+    QAction *saveAsAction = fileMenu->addAction("حفظ باسم (&Save As)\tCtrl+Shift+S");
+    fileMenu->addSeparator();
+    QAction *exitAction = fileMenu->addAction("خروج (&Exit)\tAlt+F4");
+
+    QMenu *editMenu = menuBar->addWindowTitle("تعديل (&Edit)");
+    QAction *undoAction = editMenu->addAction("تراجع (&Undo)\tCtrl+Z");
+    QAction *redoAction = editMenu->addAction("إعادة (&Redo)\tCtrl+Y");
+    editMenu->addSeparator();
+    QAction *cutAction = editMenu->addAction("قص (&Cut)\tCtrl+X");
+    QAction *copyAction = editMenu->addAction("نسخ (&Copy)\tCtrl+C");
+    QAction *pasteAction = editMenu->addAction("لصق (&Paste)\tCtrl+V");
+
+    QMenu *formatMenu = menuBar->addWindowTitle("تنسيق (&Format)");
+    QAction *fontAction = formatMenu->addAction("الخط (Font)…");
+
+    QMenu *helpMenu = menuBar->addWindowTitle("مساعدة (&Help)");
+    QAction *aboutAction = helpMenu->addAction("حول (About)");
+
+    // شريط الحالة
+    QStatusBar *statusBar = window.statusBar();
+    statusBar->showMessage("المفكرة جاهزة — الترميز: UTF-8");
+
+    // دوال المساعدة
+    auto updateTitle = [&]() {
+        QString title = g_currentFile.isEmpty() ? "وثيقة جديدة — Sadim Notepad" : g_currentFile + " — Sadim Notepad";
+        if (textEdit->document()->isModified()) title = "*" + title;
+        window.setWindowTitle(title);
+    };
+
+    auto newFile = [&]() {
+        if (textEdit->document()->isModified()) {
+            auto btn = QMessageBox::question(&window, "حفظ التغييرات",
+                "يوجد تغييرات غير محفوظة. هل ترغب في الحفظ قبل المتابعة؟",
+                QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
+            if (btn == QMessageBox::Cancel) return;
+            if (btn == QMessageBox::Save) { /* save */ }
+        }
+        textEdit->clear();
+        g_currentFile.clear();
+        updateTitle();
+        statusBar->showMessage("وثيقة جديدة");
+    };
+
+    auto openFile = [&]() {
+        QString file = QFileDialog::getOpenFileName(&window, "فتح ملف", QDir::homePath(),
+            "ملفات نصية (*.txt);;كل الملفات (*.*)");
+        if (file.isEmpty()) return;
+        QFile f(file);
+        if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QMessageBox::warning(&window, "خطأ", "لا يمكن فتح الملف: " + f.errorString());
+            return;
+        }
+        QTextStream in(&f);
+        in.setCodec("UTF-8");
+        textEdit->setPlainText(in.readAll());
+        f.close();
+        g_currentFile = file;
+        textEdit->document()->setModified(false);
+        updateTitle();
+        statusBar->showMessage("تم فتح: " + file);
+    };
+
+    auto saveFile = [&]() {
+        if (g_currentFile.isEmpty()) {
+            QString file = QFileDialog::getSaveFileName(&window, "حفظ ملف", QDir::homePath(),
+                "ملفات نصية (*.txt);;كل الملفات (*.*)");
+            if (file.isEmpty()) return;
+            g_currentFile = file;
+        }
+        QFile f(g_currentFile);
+        if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QMessageBox::warning(&window, "خطأ", "لا يمكن حفظ الملف: " + f.errorString());
+            return;
+        }
+        QTextStream out(&f);
+        out.setCodec("UTF-8");
+        out << textEdit->toPlainText();
+        f.close();
+        textEdit->document()->setModified(false);
+        updateTitle();
+        statusBar->showMessage("تم الحفظ: " + g_currentFile);
+    };
+
+    auto saveAsFile = [&]() {
+        QString file = QFileDialog::getSaveFileName(&window, "حفظ باسم", QDir::homePath(),
+            "ملفات نصية (*.txt);;كل الملفات (*.*)");
+        if (file.isEmpty()) return;
+        g_currentFile = file;
+        saveFile();
+    };
+
+    auto toggleWrap = [&]() {
+        auto mode = textEdit->lineWrapMode();
+        textEdit->setLineWrapMode(mode == QPlainTextEdit::NoWrap ?
+            QPlainTextEdit::WidgetWidth : QPlainTextEdit::NoWrap);
+    };
+
+    // ربط الإجراءات
+    QObject::connect(newAction, &QAction::triggered, newFile);
+    QObject::connect(openAction, &QAction::triggered, openFile);
+    QObject::connect(saveAction, &QAction::triggered, saveFile);
+    QObject::connect(saveAsAction, &QAction::triggered, saveAsFile);
+    QObject::connect(exitAction, &QAction::triggered, &app, &QApplication::quit);
+    QObject::connect(undoAction, &QAction::triggered, textEdit, &QPlainTextEdit::undo);
+    QObject::connect(redoAction, &QAction::triggered, textEdit, &QPlainTextEdit::redo);
+    QObject::connect(cutAction, &QAction::triggered, textEdit, &QPlainTextEdit::cut);
+    QObject::connect(copyAction, &QAction::triggered, textEdit, &QPlainTextEdit::copy);
+    QObject::connect(pasteAction, &QAction::triggered, textEdit, &QPlainTextEdit::paste);
+    QObject::connect(fontAction, &QAction::triggered, [&]() {
+        bool ok;
+        QFont f = QFontDialog::getFont(&ok, textEdit->font(), &window, "اختر الخط");
+        if (ok) textEdit->setFont(f);
+    });
+    QObject::connect(aboutAction, &QAction::triggered, []() {
+        QMessageBox::about(nullptr, "حول المفكرة",
+            "Sadim OS Notepad v0.2-daily\n"
+            "واجهة شبيهة بـ Windows Notepad للمستخدم المبتدئ\n"
+            "بنيت على Qt6 + Wayland/weston");
+    });
+
+    QObject::connect(textEdit->document(), &QTextDocument::contentsChanged, [&]() {
+        textEdit->document()->setModified(true);
+        updateTitle();
+        statusBar->showMessage("يوجد تغييرات غير محفوظة");
+    });
+
+    window.show();
+    return app.exec();
+}

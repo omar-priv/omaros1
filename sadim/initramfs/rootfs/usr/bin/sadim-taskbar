@@ -1,0 +1,177 @@
+#!/usr/bin/env qt6-linuxfb
+// Sadim OS — Taskbar (Windows 10 Style)
+// شريط المهام الشبيه بـ Windows 10 Taskbar
+// يحتوي على زر Start، أيقونات التطبيقات المثبتة، الساعة، ومؤشر اللغة
+// استهلاك منخفض جداً للموارد
+
+#include <QApplication>
+#include <QWidget>
+#include <QHBoxLayout>
+#include <QPushButton>
+#include <QLabel>
+#include <QTimer>
+#include <QTime>
+#include <QFontDatabase>
+#include <QDesktopWidget>
+#include <QProcess>
+
+class Taskbar : public QWidget {
+    Q_OBJECT
+public:
+    Taskbar() {
+        setWindowFlags(Qt::FramelessWindowHint | Qt::Tool | Qt::WindowStaysOnTopHint);
+        setFixedHeight(40); // ارتفاع شريط المهام Windows 10
+
+        // Windows 10 Taskbar StyleSheet
+        setStyleSheet(R"(
+            QWidget#taskbar {
+                background-color: #f0f0f0;
+                border-top: 1px solid #d0d0d0;
+                border-bottom: none;
+                border-left: none;
+                border-right: none;
+            }
+            QPushButton#startBtn {
+                background-color: #0078D7;
+                color: white;
+                border: none;
+                border-radius: 0px; /* Windows 10 Sharp Corners */
+                min-width: 100px;
+                min-height: 36px;
+                font-size: 13px;
+                font-weight: bold;
+                text-align: left;
+                padding-left: 10px;
+            }
+            QPushButton#startBtn:hover {
+                background-color: #005a9e;
+            }
+            QPushButton#startBtn:pressed {
+                background-color: #004578;
+            }
+            QPushButton#appBtn {
+                background-color: #f0f0f0;
+                color: #333333;
+                border: none;
+                border-bottom: 2px solid transparent;
+                min-width: 44px;
+                min-height: 36px;
+                font-size: 12px;
+            }
+            QPushButton#appBtn:hover {
+                background-color: #e0e0e0;
+                border-bottom: 2px solid #0078D7;
+            }
+            QPushButton#appBtn:pressed {
+                background-color: #d0d0d0;
+            }
+            QPushButton#appBtn#active {
+                border-bottom: 2px solid #0078D7;
+                background-color: #e0e0e0;
+            }
+            QLabel#timeLabel {
+                color: #333333;
+                font-size: 13px;
+                font-weight: bold;
+                padding: 0 10px;
+                min-width: 80px;
+            }
+            QLabel#langLabel {
+                color: #666666;
+                font-size: 12px;
+                padding: 0 10px;
+                min-width: 40px;
+                background-color: #f0f0f0;
+                border-left: 1px solid #d0d0d0;
+            }
+        )");
+
+        QHBoxLayout *layout = new QHBoxLayout(this);
+        layout->setContentsMargins(0, 0, 0, 0);
+        layout->setSpacing(0);
+
+        // زر Start (مثل Windows 10)
+        m_startBtn = new QPushButton("ابدأ (Start)");
+        m_startBtn->setObjectName("startBtn");
+        connect(m_startBtn, &QPushButton::clicked, this, &Taskbar::onStart);
+        layout->addWidget(m_startBtn);
+
+        layout->addSpacing(5);
+
+        // أيقونات التطبيقات المثبتة (Pinned Apps)
+        const QStringList pinnedApps = {
+            {"مستكشف الملفات", "/usr/bin/sadim-file-explorer"},
+            {"المفكرة", "/usr/bin/sadim-notepad"},
+            {"الحاسبة", "/usr/bin/sadim-calculator"},
+            {"مدير المهام", "/usr/bin/sadim-task-manager"}
+        };
+
+        for (int i = 0; i < pinnedApps.size(); ++i) {
+            QString name = pinnedApps[i].first;
+            QString path = pinnedApps[i].second;
+            QPushButton *btn = new QPushButton(name.left(8) + "…");
+            btn->setObjectName("appBtn");
+            btn->setProperty("appPath", path);
+            btn->setMinimumSize(44, 36);
+            connect(btn, &QPushButton::clicked, this, [this, path]() {
+                QProcess::startDetached(path);
+            });
+            layout->addWidget(btn);
+        }
+
+        layout->addStretch();
+
+        // الساعة (مثل Windows 10)
+        m_timeLabel = new QLabel();
+        m_timeLabel->setObjectName("timeLabel");
+        layout->addWidget(m_timeLabel);
+
+        // مؤشر اللغة (مثل Windows 10)
+        m_langLabel = new QLabel("ENG");
+        m_langLabel->setObjectName("langLabel");
+        layout->addWidget(m_langLabel);
+
+        // تحديث الساعة كل ثانية
+        m_timer = new QTimer(this);
+        connect(m_timer, &QTimer::timeout, this, &Taskbar::updateTime);
+        m_timer->start(1000);
+        updateTime();
+    }
+
+private slots:
+    void updateTime() {
+        QTime time = QTime::currentTime();
+        m_timeLabel->setText(time.toString("hh:mm tt"));
+        // التاريخ البسيط
+        QString date = QDate::currentDate().toString("dd MMMM yyyy");
+        setToolTip(date);
+    }
+
+    void onStart() {
+        // تشغيل قائمة ابدأ (Start Menu)
+        QProcess::startDetached("/usr/bin/sadim-start-menu");
+    }
+
+private:
+    QPushButton *m_startBtn;
+    QLabel *m_timeLabel;
+    QLabel *m_langLabel;
+    QTimer *m_timer;
+};
+
+#include "moc_taskbar.cpp"
+
+int main(int argc, char *argv[])
+{
+    QApplication app(argc, argv);
+    app.setApplicationName("Sadim Taskbar");
+    app.setApplicationVersion("0.2-daily");
+
+    QFont font("Segoe UI", 10);
+    if (!font.exactMatch()) font = QFont("DejaVu Sans", 10);
+    app.setFont(font);
+
+    Taskbar bar;
+    bar.show();
+    return app.exec();
+}

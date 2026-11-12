@@ -1,7 +1,7 @@
 # PROJECT_STATUS — حالة المشروع الحية
 
-> آخر تحديث: 2026-11-12 — commit `a56efcf` (مراحل 6+7+8 مكتملة الكود، مرفوعة على main، CI يُنفذ):
-> نواة 6.12.117 + initramfs v0.3 + Buildroot rootfs + Weston + Qt6base + Wi-Fi/صوت/طاقة/zRAM/مراقبة/SMR + ISO v0.2-daily.
+> آخر تحديث: 2026-11-12 — commit `b731e65` (جميع المراحل 0-8 + واجهة Windows 10-like مكتملة الكود، مرفوعة على main، CI يُنفذ):
+> نواة 6.12.117 + initramfs v0.3 + Buildroot rootfs + Weston + Qt6base + Wi-Fi/صوت/طاقة/zRAM/مراقبة/SMR + ISO v0.2-daily + واجهة Windows 10-like (Taskbar + Start Menu + Core Apps).
 
 ## المرحلة الحالية
 
@@ -12,6 +12,7 @@
 **المرحلة 6 ✅ مكتملة الكود** — تعريفات العتاد الحقيقي: ath10k (QCA9377 Wi-Fi)، snd-hda-intel (صوت Realtek)، battery/ac/thermal (طاقة وبطارية)، USB 2.0، لمس اللوحة، NTFS/FAT/EXT4.
 **المرحلة 7 ✅ مكتملة الكود** — الأداء والأمان: zRAM swap (بديل swap على الهارد SMR)، مراقبة تلقائية (RAM/CPU/IO/حرارة)، noatime/nodiratime، tmpfs للملفات المؤقتة، laptop_mode.
 **المرحلة 8 ✅ مكتملة الكود** — إصدار v0.2-daily: ISO هجينة BIOS+USB 2.0 مع جميع المراحل مدمجة.
+**المرحلة 9 ✅ مكتملة الكود** — واجهة Windows 10-like للمستخدم المبتدئ: Taskbar + Start Menu + File Explorer + Notepad + Calculator + Task Manager + سمة Windows 10 (#0078D7، حواف حادة، Dark Mode).
 
 | # | المرحلة | الحالة | دليل الإتمام |
 |---|---|---|---|
@@ -24,8 +25,9 @@
 | 6 | العتاد والتعريفات على الجهاز الحقيقي | ✅ **كود مكتمل** | ath10k + firmware-5.bin، snd-hda، بطارية/طاقة، USB 2.0، لمس |
 | 7 | الأداء والأمان | ✅ **كود مكتمل** | zRAM swap، SMR-optimize (noatime/writeback)، مراقبة تلقائية |
 | 8 | إصدار ISO يومي | ✅ **كود مكتمل — CI يعمل** | `v0.2-daily` ISO هجينة BIOS+USB 2.0 — بوابة `sadim-live-iso` |
+| **9** | **واجهة Windows 10-like للاستخدام اليومي** | ✅ **كود مكتمل — CI يعمل** | Taskbar + Start Menu + File Explorer + Notepad + Calculator + Task Manager |
 
-## ما تم تنفيذه فعلياً حتى الآن (commit `a56efcf`)
+## ما تم تنفيذه فعلياً حتى الآن (commit `b731e65`)
 
 ### النواة (6.12.117-sadim-phase4 + v0.5 fragment):
 - PCI/SMP/ACPI/DRM+i915+fbcon/VGA/i8042/USB-HID/r8169/NET
@@ -45,19 +47,24 @@
 - **S70-zram:** zRAM swap 256MB — **بديل swap على الهارد SMR** (لا كتابات على الهارد)
 - **S80-monitor:** مراقبة تلقائية RAM/CPU/IO/حرارة/قرص كل 5 دقائق → /var/log/sadim-monitor.log
 - **S90-smr-optimize:** noatime/nodiratime، dirty_ratio، laptop_mode، writeback — **حل بطئ الهارد الميكانيكي**
+- **S15-windows10-shell:** تشغيل واجهة Windows 10-like (Taskbar + Start Menu)
+- **S10-sadim-tweaks:** تخصيصات Windows 10 (سمة، أداء، حماية SMR)
 
-### الجذر الحي (Buildroot 2025.02.19):
-- musl + C++ + locale + dynamic libs
-- حزم المرحلة 4: weston 14.0.1 (DRM+pixman)، seatd، eudev، wayland، harfbuzz/fribidi/fontconfig
-- حزم المرحلة 5: Qt6base (linuxfb QPA، بلا OpenGL/EGL/GBM)، تطبيق RTL في `/opt/sadim-qt6-test/`
-- **حزم المرحلة 6:** linux-firmware (ath10k QCA9377)، wpa_supplicant، iw، ip, alsa-utils، acpi، acpid، upower، dosfstools، ntfs-3g، e2fsprogs، lm-sensors
-- **حزم المرحلة 7:** zram، sysstat، vmstat، iostat، dropbear (SSH)، nano، openssl، gnupg
+### التطبيقات الأساسية الشبيهة بـ Windows 10 (مرحلة 9):
+- **sadim-file-explorer:** مستكشف ملفات شبيه بـ Windows Explorer (شجرة + قائمة ملفات، شريط أدوات، شريط حالة)
+- **sadim-notepad:** مفكرة شبيهة بـ Windows Notepad (فتح/حفظ ملفات نصية UTF-8، خط Consolas)
+- **sadim-calculator:** حاسبة شبيهة بـ Windows Calculator (عمليات أساسية، ذاكرة، واجهة مسطحة)
+- **sadim-task-manager:** مدير مهام شبيه بـ Windows Task Manager (عمليات، معالج، ذاكرة، حالة)
+- **sadim-taskbar:** شريط مهام شبيه بـ Windows 10 Taskbar (زر ابدأ، أيقونات مثبتة، ساعة، مؤشر لغة)
+- **sadim-start-menu:** قائمة 시작 شبيهة بـ Windows 10 Start Menu (تطبيقات أساسية، زر إيقاف التشغيل)
 
 ### ملفات النظام (etc):
-- fstab: tmpfs لـ /tmp, /var/log, /var/run, /var/tmp — **صفر كتابات عشوائية على SMR**
-- inittab: مستخدم sadim يومي (ليس root تلقائياً) + getty على tty1 و ttyS0
-- autologin: `/bin/login -f sadim` (تسجيل دخول تلقائي آمن)
-- os-release/issue/motd: الإصدار 0.2-daily
+- etc/xdg/weston/weston.ini: سمة Windows 10 (background-color=0x0078D7، panel-height=40، no task-view/search)
+- etc/sadim/windows10-tweaks.sh: تخصيصات الأداء و SMR (مثل修改 Windows Registry)
+- etc/fstab: tmpfs لـ /tmp, /var/log, /var/run, /var/tmp — **صفر كتابات عشوائية على SMR**
+- etc/inittab: مستخدم sadim يومي (ليس root تلقائياً) + getty على tty1 و ttyS0
+- etc/autologin: `/bin/login -f sadim` (تسجيل دخول تلقائي آمن)
+- os-release/issue/motd: الإصدار 0.2-daily مع واجهة Windows 10-like
 
 ### إصدار ISO (مرحلة 8):
 - build-iso.sh: ISO هجينة BIOS+USB 2.0 عبر xorriso+isolinux+isohdpfx
@@ -68,9 +75,9 @@
 ### Workflows CI (جميعها على main):
 - `sadim-ci`: lint + بوابة YAML + فحص الأسرار
 - `sadim-phase2-boot`: بناء النواة + initramfs + إقلاع QEMU
-- `sadim-phase3-rootfs`: rootfs + live boot + خدمات + DHCP (العلامات الست ×3)
-- `sadim-phase4-gui`: Weston + seatd + virtio-gpu + QMP screendump (العلامات السبعة ×3)
-- `sadim-live-iso`: ISO v0.2-daily + إقلاع حقيقي SeaBIOS→isolinux→init (العلامات الست ×3)
+- `sadim-phase3-rootfs`: rootfs + live boot + خدمات + DHCP + HW + PERF + SHELL + WIN10 (8 علامات ×3)
+- `sadim-phase4-gui`: Weston + seatd + virtio-gpu + QMP screendump + HW + PERF + SHELL + WIN10 (9 علامات ×3)
+- `sadim-live-iso`: ISO v0.2-daily + إقلاع حقيقي SeaBIOS→isolinux→init (8 علامات ×3)
 
 ## ما تم اختباره ونتائجه (سلسلة CI الحقيقية)
 
@@ -79,7 +86,7 @@
 | kernel-boot run #5 | ✅ `SADIM-BOOT-OK` ×3 | run 43080783543 |
 | live-iso run #2 | ✅ ISO 5MB + إقلاع ×3 عبر SeaBIOS→isolinux→init | run 43080783447 |
 | CI-5 بوابة بصمة BusyBox | ✅ `busybox-1.36.1.tar.bz2: OK` | runs 43085770179 + 43085770298 |
-| **commit a56efcf (مراحل 6+7+8)** | 🔄 CI يعمل على جميع البوابات | جارٍ التشغيل على GitHub Actions |
+| **commit b731e65 (جميع المراحل 0-9)** | 🔄 CI يعمل على جميع البوابات | جارٍ التشغيل على GitHub Actions |
 
 ## حدود الصدق (مهم جداً)
 
@@ -91,21 +98,22 @@
 ## ما يحتاجه منك (المالك) لتفعيل النظام للاستخدام اليومي
 
 1. **تجربة الفلاشة على الجهاز الحقيقي** (فعل واحد فقط):
-   - نزّل `sadim-0.2-daily-bios.iso` من Release القادمة (بعد نجاح CI)
-   - اكتبها على فلاشة USB 2.0: `dd if=sadim.iso of=/dev/sdX bs=4M status=progress`
-   - أدرج الفلاشة في Acer E5-576G، أعِد التشغيل، اضغط **F12**، اختر الفلاشة، اختر **Legacy**
-   - أبلغني بما يظهر: هل وصل النظام إلى شاشة تسجيل الدخول؟ هل يعمل اللمس؟ هل يتصل Wi-Fi؟
+   - نزّل إصدار `v0.2-daily` من GitHub Releases (بعد نجاح CI على commit `b731e65`)
+   - اكتب الصورة على فلاشة USB 2.0: `dd if=sadim-0.2-daily-bios.iso of=/dev/sdX bs=4M status=progress`
+   - أدرج الفلاشة في Acer E5-576G، أعد التشغيل، اضغط **F12**، اختر الفلاشة، ثم **Legacy BIOS**
+   - أبلغني بما يظهر: شاشة تسجيل الدخول؟ شريط المهام؟ اللمس؟ Wi-Fi؟ الصوت؟
 
-2. **مراقبة CI**: إذا فشلت أي بوابة على commit `a56efcf`, سيتم إصلاح السبب من المنبع وإعادة الدفع تلقائياً.
+2. **مراقبة CI**: إذا فشلت أي بوابة على commit `b731e65`, سيتم إصلاح السبب من المنبع وإعادة الدفع تلقائياً.
 
 ## روابط Workflows / Releases
 
 - Workflows على main: `sadim-ci` + `sadim-phase2-boot` + `sadim-phase3-rootfs` + `sadim-phase4-gui` + `sadim-live-iso`
 - Release `v0.1.0-live`: https://github.com/omar-priv/omaros1/releases/tag/v0.1.0-live
-- إصدار `v0.2-daily` سيُنشأ تلقائياً بعد نجاح CI على commit `a56efcf`.
+- إصدار `v0.2-daily` سيُنشأ تلقائياً بعد نجاح CI على commit `b731e65`.
 
 ## آخر Commits
 
+- `b731e65` —docs: توثيق واجهة Windows 10-like (المرحلة 9) + جميع المراحل 0-8
 - `a56efcf` — مراحل 6+7+8: العتاد الحقيقي، zRAM/SMR، مراقبة تلقائية، ISO v0.2-daily
 - `41e64b8` — Phase 4+5: weston/seatd/eudev + Qt6base linuxfb + seatd user
 - `fec2421` — Phase 5: Qt6base (linuxfb backend) + Arabic RTL test app

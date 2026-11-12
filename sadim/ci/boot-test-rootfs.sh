@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Sadim OS — بوابة المراحل 3-7: إقلاع الجذر الحي كاملاً في QEMU
+# Sadim OS — بوابة المراحل 3-8: إقلاع الجذر الحي كاملاً في QEMU
 # المسار: kernel + initramfs (محمّل v0.3) → squashfs على virtio → overlayfs → switch_root
-#         → buildroot init → rcS → جميع الخدمات (Wi-Fi/صوت/طاقة/zRAM/مراقبة/SMR)
-# النجاح: العلامات الست ×3 تشغيلات متتالية (مضاد الارتداد):
-#   SADIM-BOOT-OK, SADIM-LIVE-OK, SADIM-ROOTFS-OK, SADIM-NET-OK, SADIM-HW-OK, SADIM-PERF-OK
+#         → buildroot init → rcS → جميع الخدمات + واجهة Windows 10-like
+# 성공: العلامات الثمانية ×3 تشغيلات متتالية (مضاد الارتداد):
+#   SADIM-BOOT-OK, SADIM-LIVE-OK, SADIM-ROOTFS-OK, SADIM-NET-OK, SADIM-HW-OK, SADIM-PERF-OK, SADIM-SHELL-OK, SADIM-WIN10-OK
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -37,12 +37,14 @@ for i in $(seq 1 $RUNS); do
      && grep -q "SADIM-ROOTFS-OK" "$rlog" \
      && grep -q "SADIM-NET-OK"    "$rlog" \
      && grep -q "SADIM-HW-OK"     "$rlog" \
-     && grep -q "SADIM-PERF-OK"   "$rlog"; then
+     && grep -q "SADIM-PERF-OK"   "$rlog" \
+     && grep -q "SADIM-SHELL-OK"  "$rlog" \
+     && grep -q "SADIM-WIN10-OK"  "$rlog"; then
     ok=$((ok+1))
     cp "$rlog" "$LOG"
   else
     echo "[sadim] run $i FAILED — one or more markers missing"
-    for m in SADIM-BOOT-OK SADIM-LIVE-OK SADIM-ROOTFS-OK SADIM-NET-OK SADIM-HW-OK SADIM-PERF-OK; do
+    for m in SADIM-BOOT-OK SADIM-LIVE-OK SADIM-ROOTFS-OK SADIM-NET-OK SADIM-HW-OK SADIM-PERF-OK SADIM-SHELL-OK SADIM-WIN10-OK; do
       grep -q "$m" "$rlog" && echo "  marker $m: PRESENT" || echo "  marker $m: MISSING"
     done
     cp "$rlog" "$LOG"
@@ -51,7 +53,7 @@ done
 
 if [ "$ok" -eq "$RUNS" ]; then
   echo "=============================================================="
-  echo "  ROOTFS BOOT TEST PASSED — all 6 markers x3 (v0.2)"
+  echo "  ROOTFS BOOT TEST PASSED — all 8 markers x3 (v0.2-daily Windows 10 UI)"
   echo "=============================================================="
   exit 0
 else

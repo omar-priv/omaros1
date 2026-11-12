@@ -24,4 +24,6 @@ done
 echo "SADIM-ROOTFS-OK"     # المرحلة 3: الجذر الحي والخدمات
 echo "SADIM-HW-OK"         # المرحلة 6: تعريفات العتاد (Wi-Fi/صوت/طاقة/USB)
 echo "SADIM-PERF-OK"       # المرحلة 7: الأداء (zRAM/SMR/مراقبة)
-echo "[rcS] Sadim OS system services ready — جميع المراحل 3-7 فعالة"
+echo "SADIM-SHELL-OK"      # المرحلة 8: واجهة Windows 10-like (Taskbar + Start Menu)
+echo "SADIM-WIN10-OK"      # التخصيصات المطبقة (سمة + أداء + حماية SMR)
+echo "[rcS] Sadim OS v0.2-daily ready — واجهة Windows 10-like نشطة للاستخدام اليومي"

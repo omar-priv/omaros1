@@ -14,6 +14,7 @@
 | 6 | العتاد والتعريفات | HD620 (i915)، MX130 (مؤجلة)، QCA9377 (ath10k + firmware-5.bin)، صوت (snd-hda)، بطارية/طاقة، USB 2.0، لمس (Synaptics/Elantech) | ✅ كود مكتمل | kernel fragment v0.5 + rootfs حزم (linux-firmware, wpa_supplicant, alsa-utils, acpi, upower) — commit `a56efcf` |
 | 7 | الأداء والأمان | zRAM swap (بديل swap على SMR)، noatime/nodiratime، tmpfs للملفات المؤقتة، مراقبة تلقائية RAM/CPU/IO/حرارة، laptop_mode | ✅ كود مكتمل | S70-zram، S80-monitor، S90-smr-optimize، etc/fstab — commit `a56efcf` |
 | 8 | الإصدار اليومي | ISO هجينة BIOS+USB 2.0 مع جميع المراحل مدمجة، إصدار 0.2-daily | ✅ كود مكتمل — CI يعمل | iso/build-iso.sh + VERSION + خيارات إقلاع متعددة — commit `a56efcf` |
+| **9** | **واجهة Windows 10-like للاستخدام اليومي** | Taskbar + Start Menu + File Explorer + Notepad + Calculator + Task Manager + سمة Windows 10 (#0078D7، حواف حادة، Dark Mode، سكريبتات تخصيص مثل Windows Registry) | ✅ كود مكتمل — CI يعمل | sadim-taskbar, sadim-start-menu, sadim-file-explorer, sadim-notepad, sadim-calculator, sadim-task-manager, etc/xdg/weston/weston.ini, etc/sadim/windows10-tweaks.sh, etc/init.d/S15-windows10-shell — commit `b731e65` |
 
 ## أهداف قياس معلنة (تُقاس فعلياً قبل أي إعلان نجاح)
 

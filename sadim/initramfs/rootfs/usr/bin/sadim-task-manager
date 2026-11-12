@@ -1,0 +1,348 @@
+#!/usr/bin/env qt6-linuxfb
+// Sadim OS — Task Manager (Windows 10 Style)
+// تطبيق مدير المهام الشبيه بـ Windows Task Manager
+// يعرض العمليات، استخدام الذاكرة، المعالج، والقرص
+// استهلاك منخفض للموارد — قراءة من /proc مباشرة
+
+#include <QApplication>
+#include <QMainWindow>
+#include <QWidget>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QTableWidget>
+#include <QLabel>
+#include <QProgressBar>
+#include <QPushButton>
+#include <QMenuBar>
+#include <QAction>
+#include <QTimer>
+#include <QFile>
+#include <QTextStream>
+#include <QVector>
+#include <QPair>
+#include <QFontDatabase>
+#include <QStringList>
+#include <QHeaderView>
+
+struct ProcessInfo {
+    QString pid;
+    QString name;
+    QString user;
+    double cpuPercent;
+    qint64 memKB;
+    QString status;
+};
+
+class TaskManager : public QMainWindow {
+    Q_OBJECT
+public:
+    TaskManager() {
+        setWindowTitle("س dvor — مدير المهام (Sadim Task Manager)");
+        resize(900, 600);
+        setMinimumSize(700, 500);
+
+        QFont font("Segoe UI", 10);
+        if (!font.exactMatch()) font = QFont("DejaVu Sans", 10);
+        setFont(font);
+
+        setStyleSheet(R"(
+            QMainWindow { background-color: #f0f0f0; border: none; }
+            QMenuBar { background-color: #f0f0f0; color: #333333; border-bottom: 1px solid #d0d0d0; padding: 2px; }
+            QMenuBar::item { background: transparent; padding: 4px 8px; border: 1px solid transparent; }
+            QMenuBar::item:selected { background-color: #0078D7; color: white; border: 1px solid #005a9e; }
+            QTableWidget { background-color: #ffffff; border: 1px solid #d0d0d0; gridline-color: #e0e0e0; font-size: 12px; }
+            QTableWidget::item { padding: 4px; border: none; }
+            QTableWidget::item:selected { background-color: #0078D7; color: white; }
+            QTableWidget::horizontalHeader { background-color: #e0e0e0; border: none; }
+            QPushButton { background-color: #f0f0f0; border: 1px solid #d0d0d0; padding: 4px 12px; min-width: 80px; }
+            QPushButton:hover { background-color: #e0e0e0; border: 1px solid #0078D7; }
+            QPushButton:pressed { background-color: #d0d0d0; }
+            QPushButton#endTaskBtn { background-color: #e53935; color: white; border: 1px solid #c62828; }
+            QPushButton#endTaskBtn:hover { background-color: #c62828; }
+            QProgressBar { border: 1px solid #d0d0d0; text-align: center; background-color: #e0e0e0; height: 16px; }
+            QProgressBar::chunk { background-color: #0078D7; width: 1px; }
+            QLabel#titleLabel { font-size: 14px; font-weight: bold; color: #333333; }
+            QStatusBar { background-color: #f0f0f0; color: #666666; border-top: 1px solid #d0d0d0; }
+        )");
+
+        QWidget *central = new QWidget();
+        QVBoxLayout *mainLayout = new QVBoxLayout(central);
+        mainLayout->setContentsMargins(10, 10, 10, 10);
+        mainLayout->setSpacing(10);
+
+        // قسم الملخص (Performance Summary)
+        QWidget *summaryWidget = new QWidget();
+        QHBoxLayout *summaryLayout = new QHBoxLayout(summaryWidget);
+
+        m_cpuLabel = new QLabel("المعالج: 0%");
+        m_cpuLabel->setObjectName("titleLabel");
+        m_cpuBar = new QProgressBar();
+        m_cpuBar->setRange(0, 100);
+        m_cpuBar->setValue(0);
+
+        m_memLabel = new QLabel("الذاكرة: 0 MB / 0 MB");
+        m_memLabel->setObjectName("titleLabel");
+        m_memBar = new QProgressBar();
+        m_memBar->setRange(0, 100);
+        m_memBar->setValue(0);
+
+        summaryLayout->addWidget(m_cpuLabel);
+        summaryLayout->addWidget(m_cpuBar, 1);
+        summaryLayout->addSpacing(20);
+        summaryLayout->addWidget(m_memLabel);
+        summaryLayout->addWidget(m_memBar, 1);
+
+        mainLayout->addWidget(summaryWidget);
+
+        // جدول العمليات
+        m_processTable = new QTableWidget(0, 6);
+        QStringList headers = {"PID", "اسم العملية", "المستخدم", "المعالج (%)", "الذاكرة (KB)", "الحالة"};
+        m_processTable->setHorizontalHeaderLabels(headers);
+        m_processTable->horizontalHeader()->setStretchLastSection(true);
+        m_processTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+        m_processTable->setAlternatingRowColors(true);
+        mainLayout->addWidget(m_processTable, 1);
+
+        // أزرار التحكم
+        QHBoxLayout *btnLayout = new QHBoxLayout();
+        QPushButton *refreshBtn = new QPushButton("تحديث (Refresh)");
+        QPushButton *endTaskBtn = new QPushButton("إنهاء المهمة (End Task)");
+        endTaskBtn->setObjectName("endTaskBtn");
+        QPushButton *closeBtn = new QPushButton("إغلاق (Close)");
+
+        btnLayout->addWidget(refreshBtn);
+        btnLayout->addWidget(endTaskBtn);
+        btnLayout->addStretch();
+        btnLayout->addWidget(closeBtn);
+
+        mainLayout->addLayout(btnLayout);
+
+        setCentralWidget(central);
+
+        // قائمة التطبيق
+        QMenuBar *menuBar = this->menuBar();
+        QMenu *viewMenu = menuBar->addWindowTitle("عرض (&View)");
+        QAction *refreshAction = viewMenu->addAction("تحديث الآن (Refresh Now)\tF5");
+        QObject::connect(refreshAction, &QAction::triggered, this, &TaskManager::refreshData);
+
+        QMenu *helpMenu = menuBar->addWindowTitle("مساعدة (&Help)");
+        QAction *aboutAction = helpMenu->addAction("حول (About)");
+        QObject::connect(aboutAction, &QAction::triggered, []() {
+            QMessageBox::about(nullptr, "حول مدير المهام",
+                "Sadim OS Task Manager v0.2-daily\n"
+                "واجهة شبيهة بـ Windows Task Manager للمستخدم المبتدئ\n"
+                "يعرض العمليات واستخدام الموارد في الوقت الفعلي");
+        });
+
+        // شريط الحالة
+        statusBar()->showMessage("مدير المهام جاهز — القراءة من /proc");
+
+        // ربط الأزرار
+        QObject::connect(refreshBtn, &QPushButton::clicked, this, &TaskManager::refreshData);
+        QObject::connect(endTaskBtn, &QPushButton::clicked, this, &TaskManager::onEndTask);
+        QObject::connect(closeBtn, &QPushButton::clicked, &app, &QApplication::quit);
+
+        // تحديث تلقائي كل ثانيتين
+        m_timer = new QTimer(this);
+        connect(m_timer, &QTimer::timeout, this, &TaskManager::refreshData);
+        m_timer->start(2000);
+
+        refreshData();
+    }
+
+private slots:
+    void refreshData() {
+        // قراءة ملخص النظام
+        readSystemSummary();
+        // قراءة العمليات
+        readProcesses();
+    }
+
+    void onEndTask() {
+        QModelIndexList selected = m_processTable->selectionModel()->selectedRows();
+        if (selected.isEmpty()) {
+            QMessageBox::information(this, "إنهاء المهمة", "الرجاء اختيار عملية من القائمة أولاً.");
+            return;
+        }
+        QString pid = m_processTable->item(selected.first().row(), 0)->text();
+        QString name = m_processTable->item(selected.first().row(), 1)->text();
+
+        auto btn = QMessageBox::question(this, "إنهاء المهمة",
+            "هل أنت متأكد من إنهاء العملية: " + name + " (PID: " + pid + ")؟",
+            QMessageBox::Yes | QMessageBox::No);
+        if (btn == QMessageBox::Yes) {
+            bool ok;
+            pid.toInt(&ok);
+            if (ok) {
+                if (::kill(pid.toInt(), 15) == 0) { // SIGTERM
+                    statusBar()->showMessage("تم إرسال إشارة إنهاء لـ PID: " + pid);
+                } else {
+                    QMessageBox::warning(this, "خطأ", "لا يمكن إنهاء العملية: " + pid);
+                }
+            }
+        }
+        refreshData();
+    }
+
+private:
+    void readSystemSummary() {
+        // قراءة الذاكرة من /proc/meminfo
+        QFile meminfo("/proc/meminfo");
+        qint64 memTotal = 0, memAvailable = 0;
+        if (meminfo.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QTextStream in(&meminfo);
+            while (!in.atEnd()) {
+                QString line = in.readLine();
+                if (line.startsWith("MemTotal:")) {
+                    memTotal = line.split(QRegExp("\\s+"), Qt::SkipEmptyParts).value(1).toLongLong();
+                } else if (line.startsWith("MemAvailable:")) {
+                    memAvailable = line.split(QRegExp("\\s+"), Qt::SkipEmptyParts).value(1).toLongLong();
+                }
+            }
+            meminfo.close();
+        }
+
+        qint64 memUsed = memTotal - memAvailable;
+        int memPct = memTotal > 0 ? (int)(memUsed * 100 / memTotal) : 0;
+
+        m_memLabel->setText(QString("الذاكرة: %1 MB / %2 MB (%3%)")
+                            .arg(memUsed / 1024).arg(memTotal / 1024).arg(memPct));
+        m_memBar->setValue(memPct);
+
+        // قراءة تحميل المعالج من /proc/stat (مبسط)
+        QFile stat("/proc/stat");
+        if (stat.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QTextStream in(&stat);
+            QString line = in.readLine();
+            stat.close();
+            QStringList parts = line.split(QRegExp("\\s+"), Qt::SkipEmptyParts);
+            if (parts.size() >= 5) {
+                bool ok1, ok2, ok3, ok4, ok5;
+                qint64 user = parts.value(1).toLongLong(&ok1);
+                qint64 nice = parts.value(2).toLongLong(&ok2);
+                qint64 system = parts.value(3).toLongLong(&ok3);
+                qint64 idle = parts.value(4).toLongLong(&ok4);
+                qint64 total = user + nice + system + idle;
+                qint64 active = user + nice + system;
+                int cpuPct = total > 0 ? (int)(active * 100 / total) : 0;
+                m_cpuLabel->setText(QString("المعالج: %1%").arg(cpuPct));
+                m_cpuBar->setValue(cpuPct);
+            }
+        }
+
+        statusBar()->showMessage("تم التحديث — " + QTime::currentTime().toString("hh:mm:ss"));
+    }
+
+    void readProcesses() {
+        m_processTable->setRowCount(0);
+        QDir procDir("/proc");
+        QStringList pids = procDir.entryList(QStringList() << "[0-9]*", QDir::Dirs);
+
+        QVector<ProcessInfo> processes;
+        for (const QString &pidStr : pids) {
+            bool ok;
+            int pid = pidStr.toInt(&ok);
+            if (!ok) continue;
+
+            ProcessInfo p;
+            p.pid = pidStr;
+
+            // قراءة اسم العملية من /proc/PID/cmdline
+            QFile cmdline(QString("/proc/%1/cmdline").arg(pidStr));
+            if (cmdline.open(QIODevice::ReadOnly)) {
+                QTextStream in(&cmdline);
+                QString cmd = in.readAll();
+                cmdline.close();
+                QStringList parts = cmd.split('\0', Qt::SkipEmptyParts);
+                p.name = parts.isEmpty() ? pidStr : parts.first();
+                if (p.name.length() > 30) p.name = p.name.left(27) + "...";
+            } else {
+                p.name = pidStr;
+            }
+
+            // قراءة المستخدم من /proc/PID/status
+            QFile status(QString("/proc/%1/status").arg(pidStr));
+            if (status.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                QTextStream in(&status);
+                while (!in.atEnd()) {
+                    QString line = in.readLine();
+                    if (line.startsWith("Uid:")) {
+                        QStringList uidParts = line.split(QRegExp("\\s+"), Qt::SkipEmptyParts);
+                        if (uidParts.size() >= 2) {
+                            p.user = uidParts.value(1); // UID real
+                        }
+                    }
+                    if (line.startsWith("State:")) {
+                        QStringList stateParts = line.split(QRegExp("\\s+"), Qt::SkipEmptyParts);
+                        if (stateParts.size() >= 2) {
+                            p.status = stateParts.value(1);
+                        }
+                    }
+                }
+                status.close();
+            }
+
+            // قراءة الذاكرة من /proc/PID/status (VmRSS)
+            QFile status2(QString("/proc/%1/status").arg(pidStr));
+            if (status2.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                QTextStream in(&status2);
+                while (!in.atEnd()) {
+                    QString line = in.readLine();
+                    if (line.startsWith("VmRSS:")) {
+                        QStringList rssParts = line.split(QRegExp("\\s+"), Qt::SkipEmptyParts);
+                        if (rssParts.size() >= 2) {
+                            p.memKB = rssParts.value(1).toLongLong();
+                        }
+                    }
+                }
+                status2.close();
+            }
+
+            processes.append(p);
+        }
+
+        // ترتيب حسب الذاكرة (تنازلي)
+        std::sort(processes.begin(), processes.end(), [](const ProcessInfo &a, const ProcessInfo &b) {
+            return a.memKB > b.memKB;
+        });
+
+        // ملء الجدول (أول 50 عملية فقط للأداء)
+        int rows = qMin(processes.size(), (size_t)50);
+        m_processTable->setRowCount(rows);
+        for (int i = 0; i < rows; ++i) {
+            m_processTable->setItem(i, 0, new QTableWidgetItem(processes[i].pid));
+            m_processTable->setItem(i, 1, new QTableWidgetItem(processes[i].name));
+            m_processTable->setItem(i, 2, new QTableWidgetItem(processes[i].user));
+            m_processTable->setItem(i, 3, new QTableWidgetItem(QString::number(processes[i].cpuPercent, 'f', 1)));
+            m_processTable->setItem(i, 4, new QTableWidgetItem(QString::number(processes[i].memKB)));
+            m_processTable->setItem(i, 5, new QTableWidgetItem(processes[i].status));
+        }
+
+        m_processTable->resizeColumnsToContents();
+    }
+
+private:
+    QTableWidget *m_processTable;
+    QLabel *m_cpuLabel;
+    QLabel *m_memLabel;
+    QProgressBar *m_cpuBar;
+    QProgressBar *m_memBar;
+    QTimer *m_timer;
+};
+
+#include "moc_taskmanager.cpp"
+
+int main(int argc, char *argv[])
+{
+    QApplication app(argc, argv);
+    app.setApplicationName("Sadim Task Manager");
+    app.setApplicationVersion("0.2-daily");
+
+    QFont font("Segoe UI", 10);
+    if (!font.exactMatch()) font = QFont("DejaVu Sans", 10);
+    app.setFont(font);
+
+    TaskManager tm;
+    tm.show();
+    return app.exec();
+}
