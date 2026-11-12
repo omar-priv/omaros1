@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Buildroot Live rootfs build with config validation and explicit artifact checks.
+# Buildroot Live rootfs build with Kconfig retention and runtime-file checks.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/output"
@@ -10,6 +10,7 @@ BR_SHA256="0fc9583d1b019b42c0cf3ea1dc64899a2247ab9adbce47f47ac5d4cb13ce0c98"
 BR_URL="https://github.com/buildroot/buildroot/archive/refs/tags/2025.02.19.tar.gz"
 OVERLAY="$ROOT/initramfs/rootfs"
 test -d "$OVERLAY/etc" || { echo "FATAL: overlay layer missing: $OVERLAY"; exit 1; }
+
 sed "s|@OVERLAY@|$OVERLAY|g" "$ROOT/rootfs/sadim-rootfs.config" > "$OUT/brconf/sadim_defconfig"
 if [ ! -d "$BRV" ]; then
   echo "[sadim] downloading $BRV from the official Buildroot mirror"
@@ -17,12 +18,15 @@ if [ ! -d "$BRV" ]; then
   echo "$BR_SHA256  $BRV.tar.gz" | sha256sum -c -
   tar xf "$BRV.tar.gz"
 fi
+
 cd "$BRV"
 echo "[sadim] generating Buildroot configuration"
-make BR2_DEFCONFIG="$OUT/brconf/sadim_defconfig" BR2_DL_DIR="$OUT/dl-rootfs" BR2_CCACHE_DIR="$OUT/ccache" O="$OUT/buildroot-build" defconfig
+make BR2_DEFCONFIG="$OUT/brconf/sadim_defconfig" \
+     BR2_DL_DIR="$OUT/dl-rootfs" \
+     BR2_CCACHE_DIR="$OUT/ccache" \
+     O="$OUT/buildroot-build" defconfig
 
-# Kconfig may silently drop unknown symbols or options whose dependencies are
-# unmet. Fail here rather than ship an image missing requested packages.
+# Kconfig silently drops unknown symbols and symbols whose dependencies fail.
 python3 - "$OUT/brconf/sadim_defconfig" "$OUT/buildroot-build/.config" <<'PY'
 import re
 import sys
@@ -44,6 +48,8 @@ required = {
     "BR2_PACKAGE_WESTON_SHELL_DESKTOP",
     "BR2_PACKAGE_EUDEV",
     "BR2_PACKAGE_LINUX_FIRMWARE_ATHEROS_10K_QCA9377",
+    "BR2_PACKAGE_WPA_SUPPLICANT_NL80211",
+    "BR2_PACKAGE_IPROUTE2",
     "BR2_TARGET_ROOTFS_SQUASHFS",
 }
 missing_required = sorted(required - effective)
@@ -55,12 +61,26 @@ print("Buildroot config validated: %d requested symbols retained." % len(request
 PY
 
 echo "[sadim] building complete root filesystem"
-make BR2_DL_DIR="$OUT/dl-rootfs" BR2_CCACHE_DIR="$OUT/ccache" O="$OUT/buildroot-build" -j"$(nproc)"
+make BR2_DL_DIR="$OUT/dl-rootfs" \
+     BR2_CCACHE_DIR="$OUT/ccache" \
+     O="$OUT/buildroot-build" -j"$(nproc)"
+
 TARGET="$OUT/buildroot-build/target"
 test -x "$TARGET/usr/bin/weston" || { echo "ERROR: Weston binary missing"; exit 1; }
+test -x "$TARGET/bin/busybox" || { echo "ERROR: Buildroot BusyBox missing"; exit 1; }
+for applet in mkswap swapon swapoff; do
+  "$TARGET/bin/busybox" --list | grep -qx "$applet" || {
+    echo "ERROR: Buildroot BusyBox applet missing: $applet"
+    exit 1
+  }
+done
 test -s "$TARGET/lib/firmware/ath10k/QCA9377/hw1.0/firmware-5.bin" || {
   echo "ERROR: QCA9377 firmware-5.bin missing from target rootfs"; exit 1;
 }
+if find "$TARGET/etc/init.d" -maxdepth 1 -type f -name 'S*' ! -perm -u+x -print -quit 2>/dev/null | grep -q .; then
+  echo "ERROR: Buildroot overlay contains non-executable init services"
+  exit 1
+fi
 test -s "$OUT/buildroot-build/images/rootfs.squashfs" || {
   echo "ERROR: Buildroot did not produce rootfs.squashfs"; exit 1;
 }

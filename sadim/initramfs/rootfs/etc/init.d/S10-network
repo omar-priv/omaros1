@@ -1,41 +1,34 @@
 #!/bin/sh
-# Sadim OS — خدمة الشبكة: DHCP حقيقي عبر udhcpc
-# العلامة فقط عند إيجار فعلي (لا تمويه)
+# DHCP for the first detected wired interface; never assume a fixed name.
 set -u
-
-log() { echo "[net] $*"; }
-
 start_network() {
-  [ -r /proc/net/dev ] || { echo "[net] /proc/net/dev unreadable"; exit 0; }
-
+  [ -r /proc/net/dev ] || { echo "[net] /proc/net/dev unavailable"; return 0; }
   DEV=""
-  for d in eth0 enp0s3 enp2s0; do
-    if grep -qs "^ *$d:" /proc/net/dev; then DEV="$d"; break; fi
+  for path in /sys/class/net/*; do
+    [ -e "$path" ] || continue
+    name=$(basename "$path")
+    [ "$name" = "lo" ] && continue
+    [ -d "$path/wireless" ] && continue
+    DEV="$name"
+    break
   done
   if [ -z "$DEV" ]; then
-    echo "[net] no ethernet interface present (normal without hardware) — no marker"
-    exit 0
+    echo "[net] no wired interface detected"
+    return 0
   fi
-
-  echo "[net] dhcp request on $DEV…"
+  command -v udhcpc >/dev/null 2>&1 || { echo "[net] udhcpc missing"; return 1; }
+  echo "[net] requesting DHCP on $DEV"
   if udhcpc -i "$DEV" -s /etc/udhcpc.script -q -n -t 4 -T 3 > /var/log/udhcpc.log 2>&1; then
-    echo "[net] DHCP lease acquired on $DEV"
-    ifconfig "$DEV" 2>/dev/null | grep -s 'inet addr'
+    ip addr show "$DEV" 2>/dev/null || ifconfig "$DEV" 2>/dev/null || true
     echo "SADIM-NET-OK"
   else
-    echo "[net] WARN: no DHCP lease (no marker)"
-    tail -n 5 /var/log/udhcpc.log 2>/dev/null
+    echo "[net] no DHCP lease on $DEV"
+    tail -n 8 /var/log/udhcpc.log 2>/dev/null || true
   fi
 }
-
-stop_network() {
-  log "إيقاف خدمة الشبكة"
-}
-
 case "$1" in
   start) start_network ;;
-  stop)  stop_network ;;
-  restart) stop_network; sleep 1; start_network ;;
+  stop) echo "[net] DHCP client is not kept as a service" ;;
+  restart) start_network ;;
   *) echo "Usage: $0 {start|stop|restart}"; exit 1 ;;
 esac
-exit 0

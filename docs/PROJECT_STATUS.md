@@ -8,32 +8,37 @@ Release state: development only; no reviewed downloadable ISO.
 ## Current build situation
 
 - Run #9: 43147836495 — started from commit f1dc985 before the fixes in this review. It is retained and must finish independently.
-- Run #9 had built the Linux kernel and initramfs successfully; its Buildroot root filesystem was still running at the last confirmed check.
-- It has no reviewed artifact and does not include the changes in this review.
-- The ISO workflow is now manual-only and does not cancel another run. A new reviewed build must be dispatched explicitly after the current run finishes.
+- At the last live check, Run #9 had built the Linux kernel and initramfs; Buildroot rootfs was still running. No artifact existed.
+- Run #9 is an older source snapshot; even if it later uploads an artifact, do not flash it as the reviewed image.
+- The ISO workflow is manual-only and does not cancel another run. A new reviewed build must be dispatched explicitly after Run #9 finishes.
+- Static CI for reviewed commit 82e1f76 passed. That verifies YAML, shell syntax, script executable modes and static guards only; it does not run Buildroot.
 
-## Changes prepared in the repository after Run #9 started
+## Changes prepared after Run #9 started
 
-1. Live init retries block-device discovery for 20 seconds, searches SATA/SCSI/optical/virtio/NVMe/MMC device names, validates the mounted root and uses read-only mounts.
-2. Weston requires seatd, loads the configured weston.ini, waits for the Wayland socket and fails visibly if startup fails.
+1. Live init retries block-device discovery for 20 seconds, searches optical, SATA/SCSI, virtio, NVMe and MMC device names, validates the mounted root and uses read-only mounts.
+2. Weston requires seatd, loads the checked-in weston.ini, waits for a Wayland socket and fails visibly if startup fails.
 3. The misleading terminal-only taskbar launcher is disabled. Weston desktop shell is the only current graphical shell claim.
-4. Buildroot symbols were corrected: QCA9377 firmware, iproute2, net-tools and procps-ng; unsupported/incorrect Chromium, Wine and package zRAM settings were removed from the base profile.
-5. Buildroot now validates that requested Kconfig y symbols survive make defconfig, and checks for Weston, QCA9377 firmware and the SquashFS image.
-6. Kernel zRAM is built in; the init service verifies that swap really becomes active and does not disable other swap devices.
-7. The metrics service no longer invokes drop_caches under memory pressure.
-8. The old Brave boot-time installer is disabled because its SHA256 was empty.
-9. Storage tuning no longer targets /dev/sda or changes physical-drive write-cache settings.
-10. Startup markers no longer claim that browser, Wine, custom Windows shell or hardware support have passed.
+4. Init service scripts are executable in Git and the initramfs builder explicitly restores executable permissions before creating the CPIO archive.
+5. Buildroot symbols were corrected. The configuration selects the 6.12 kernel headers through the supported BR2_KERNEL_HEADERS_6_12 choice, enables BusyBox alternatives for net-tools/procps-ng and uses the verified QCA9377, iproute2, net-tools and procps-ng options.
+6. Buildroot validates that requested Kconfig y symbols survive make defconfig; the build checks Weston, the QCA9377 firmware, BusyBox swap applets, executable init services and SquashFS output.
+7. Build order now creates the Buildroot rootfs before initramfs. QCA9377 firmware is copied into initramfs because the ath10k driver is built into the kernel and may request firmware before the full root is mounted.
+8. Kernel zRAM is built in; the init service verifies that swap really becomes active and does not disable other swap devices.
+9. The metrics service no longer invokes drop_caches under memory pressure.
+10. The old Brave boot-time installer is disabled because its SHA256 was empty.
+11. Storage tuning no longer targets /dev/sda or changes physical-drive write-cache settings.
+12. Wired networking discovers the interface name dynamically; Wi-Fi reports an interface but does not claim association unless a saved WPA configuration exists.
+13. Startup markers no longer claim that browser, Wine, custom Windows shell or hardware support have passed.
+14. The ISO verification step checks bootloader files, embedded kernel/initramfs/SquashFS, QCA9377 firmware in initramfs, SquashFS metadata and checksum before upload.
 
 ## What remains incomplete
 
 - Native Wayland GUI applications and the custom Sadim/Windows-like shell.
 - Browser package with pinned version and verifiable checksum/signature.
-- Wine support (also unavailable in the old x86_64 Buildroot profile).
+- Wine support (not available in the previous x86_64 Buildroot profile).
 - Actual Acer hardware verification: display, Wi-Fi, audio, touchpad, USB boot, battery, thermals and suspend/power.
 - Performance measurements on the target laptop.
-- New reviewed ISO build, checksum, artifact download and a safe USB trial.
+- A fresh reviewed ISO build, checksum, artifact download and a safe USB trial.
 
 ## Release gate
 
-A reviewed release requires a fresh manual ISO build after these changes, successful ISO structure and SquashFS checks, a checksum and build report, and then a Live USB trial on the Acer. QEMU is not part of this acceptance path.
+A reviewed release requires a fresh manual ISO build after these changes, successful ISO structure and SquashFS checks, a checksum and build report, and then a Live USB trial on the Acer. QEMU is not part of this project's acceptance path.

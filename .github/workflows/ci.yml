@@ -63,9 +63,12 @@ jobs:
           fi
           test -x sadim/initramfs/rootfs/etc/rcS
 
-      - name: Guard against known invalid Buildroot symbols and unsafe placeholders
+      - name: Guard Buildroot and Live boot settings
         run: |
           ! grep -Eq '^BR2_PACKAGE_(QCA_ATH10K|UPPOWER|CHROMIUM|WINE|ZRAM|TMPFS|PROCPS|VMSTAT|MPSTAT|PS|FREE|DF|DU|IP|IFCONFIG|DROPBEAR_SERVER)=' sadim/rootfs/sadim-rootfs.config
+          ! grep -Eq '^BR2_TOOLCHAIN_BUILDROOT_(WCHAR|THREADS_NPTL|CXX)=' sadim/rootfs/sadim-rootfs.config
+          grep -q '^BR2_KERNEL_HEADERS_6_12=y$' sadim/rootfs/sadim-rootfs.config
+          grep -q '^BR2_PACKAGE_BUSYBOX_SHOW_OTHERS=y$' sadim/rootfs/sadim-rootfs.config
           ! grep -q -- '--no-config' sadim/initramfs/rootfs/etc/init.d/S30-weston
           ! grep -q 'BRAVE_EXPECTED_SHA256=""' sadim/initramfs/rootfs/etc/init.d/S45-brave-install
           grep -q '^CONFIG_ZRAM=y$' sadim/kernel/fragments/qemu-minimal.config

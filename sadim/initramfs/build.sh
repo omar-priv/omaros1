@@ -25,16 +25,16 @@ if [ ! -x "$BVB/busybox" ]; then
   cd ..
 fi
 
-# Fail early if required early-boot applets are absent.
-for applet in mount umount switch_root mdev mkswap swapon swapoff; do
+# These applets are needed before the full Buildroot root is available.
+for applet in mount umount switch_root mdev; do
   "$BVB/busybox" --list | grep -qx "$applet" || {
-    echo "ERROR: required BusyBox applet missing: $applet"
+    echo "ERROR: required initramfs applet missing: $applet"
     exit 1
   }
 done
 
-# The ath10k driver is built into the kernel, so its firmware must be present
-# in initramfs before the full SquashFS root can be mounted.
+# ath10k is built into the kernel; firmware must be present in initramfs
+# because the driver may request it before the SquashFS root is mounted.
 FW_SOURCE="$OUT/buildroot-build/target/lib/firmware/ath10k/QCA9377"
 test -s "$FW_SOURCE/hw1.0/firmware-5.bin" || {
   echo "ERROR: Buildroot QCA9377 firmware-5.bin missing; build rootfs before initramfs"
