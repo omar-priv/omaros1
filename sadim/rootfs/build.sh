@@ -3,7 +3,9 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/output"
-mkdir -p "$OUT/dl-rootfs" "$OUT/ccache" "$OUT/brconf"
+mkdir -p "$OUT/dl-rootfs" "$OUT/ccache" "$OUT/brconf" "$OUT/buildroot-build"
+BUILD_LOG="$OUT/buildroot-build/build.log"
+: > "$BUILD_LOG"
 cd "$OUT"
 BRV="buildroot-2025.02.19"
 BR_SHA256="0fc9583d1b019b42c0cf3ea1dc64899a2247ab9adbce47f47ac5d4cb13ce0c98"
@@ -24,7 +26,7 @@ echo "[sadim] generating Buildroot configuration"
 make BR2_DEFCONFIG="$OUT/brconf/sadim_defconfig" \
      BR2_DL_DIR="$OUT/dl-rootfs" \
      BR2_CCACHE_DIR="$OUT/ccache" \
-     O="$OUT/buildroot-build" defconfig
+     O="$OUT/buildroot-build" defconfig 2>&1 | tee -a "$BUILD_LOG"
 
 # Kconfig silently drops unknown symbols and symbols whose dependencies fail.
 python3 - "$OUT/brconf/sadim_defconfig" "$OUT/buildroot-build/.config" <<'PY'
@@ -63,7 +65,7 @@ PY
 echo "[sadim] building complete root filesystem"
 make BR2_DL_DIR="$OUT/dl-rootfs" \
      BR2_CCACHE_DIR="$OUT/ccache" \
-     O="$OUT/buildroot-build" -j"$(nproc)"
+     O="$OUT/buildroot-build" -j"$(nproc)" 2>&1 | tee -a "$BUILD_LOG"
 
 TARGET="$OUT/buildroot-build/target"
 test -x "$TARGET/usr/bin/weston" || { echo "ERROR: Weston binary missing"; exit 1; }
