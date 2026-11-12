@@ -5,7 +5,6 @@ on:
   push:
     branches: [main]
     paths:
-      - '.github/workflows/build-sadim-iso.yml'
       - 'sadim/**'
   workflow_dispatch:
 
@@ -33,8 +32,9 @@ jobs:
             cpio gzip xz-utils wget curl rsync file patch perl python3 \
             unzip git xorriso isolinux syslinux-common squashfs-tools
 
-      - name: Cache source downloads and compiler cache
-        uses: actions/cache@v4
+      - name: Restore source downloads and compiler cache
+        id: source-cache
+        uses: actions/cache/restore@v4
         with:
           path: |
             sadim/output/dl
@@ -118,4 +118,14 @@ jobs:
             sadim/output/buildroot-build/build.log
             sadim/output/buildroot-build/.config
           if-no-files-found: ignore
+          include-hidden-files: true
           retention-days: 7
+      - name: Save source downloads and compiler cache (even after failure)
+        if: always() && steps.source-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            sadim/output/dl
+            sadim/output/dl-rootfs
+            sadim/output/ccache
+          key: sadim-v02-${{ runner.os }}-${{ hashFiles('sadim/kernel/version.mk', 'sadim/rootfs/sadim-rootfs.config', 'sadim/kernel/fragments/qemu-minimal.config') }}
