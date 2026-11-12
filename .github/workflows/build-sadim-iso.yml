@@ -31,7 +31,6 @@ jobs:
             build-essential bc bison flex libssl-dev libelf-dev \
             cpio gzip xz-utils wget curl rsync file patch perl python3 \
             unzip git xorriso isolinux syslinux-common squashfs-tools \
-            qemu-system-x86
 
       - name: Cache source downloads and compiler cache
         uses: actions/cache@v4
@@ -68,20 +67,6 @@ jobs:
           test -s /tmp/sadim-iso-check/rootfs.squashfs
           unsquashfs -s /tmp/sadim-iso-check/rootfs.squashfs
 
-      - name: Boot-test ISO in SeaBIOS QEMU
-        run: |
-          set -euo pipefail
-          timeout 90s qemu-system-x86_64 \
-            -machine pc,accel=tcg -m 2048 -smp 2 \
-            -cdrom sadim/output/sadim.iso -boot d \
-            -display none -serial stdio -monitor none -no-reboot \
-            > /tmp/sadim-qemu.log 2>&1 || status=$?
-          cat /tmp/sadim-qemu.log
-          grep -q "SADIM-BOOT-OK" /tmp/sadim-qemu.log
-          grep -q "SADIM-LIVE-OK" /tmp/sadim-qemu.log
-          # A successful Live OS is expected to keep running; timeout is only the test window.
-          # The two boot markers, not a guest shutdown, determine pass/fail.
-
       - name: Generate checksums and build report
         if: success()
         run: |
@@ -93,7 +78,7 @@ jobs:
             echo "Built: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "ISO bytes: $(stat -c%s sadim.iso)"
             echo "Kernel: $(file bzImage)"
-            echo "Boot test: PASS (SeaBIOS/QEMU; SADIM-BOOT-OK + SADIM-LIVE-OK)"
+            echo "Boot test: NOT RUN (user requested direct ISO build without QEMU)"
             echo "Hardware test: NOT PERFORMED"
           } > BUILD-REPORT.txt
 
@@ -117,6 +102,5 @@ jobs:
           name: sadim-v02-build-diagnostics
           path: |
             sadim/output/buildroot-build/build.log
-            /tmp/sadim-qemu.log
           if-no-files-found: ignore
           retention-days: 7
