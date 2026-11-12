@@ -4,14 +4,6 @@ name: sadim-phase4-gui
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "sadim/kernel/**"
-      - "sadim/initramfs/**"
-      - "sadim/rootfs/**"
-      - "sadim/ci/boot-test-gui.sh"
-      - ".github/workflows/gui.yml"
 
 permissions:
   contents: read
