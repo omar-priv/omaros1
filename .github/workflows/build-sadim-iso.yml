@@ -1,14 +1,19 @@
 name: Sadim OS v0.2-daily ISO
 
-# Manual-only so a source push cannot cancel or replace an active ISO build.
+# Build automatically after source changes; manual rebuilds remain available.
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-sadim-iso.yml'
+      - 'sadim/**'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: sadim-iso-\${{ github.ref }}
+  group: sadim-iso-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -35,9 +40,9 @@ jobs:
             sadim/output/dl
             sadim/output/dl-rootfs
             sadim/output/ccache
-          key: sadim-v02-\${{ runner.os }}-\${{ hashFiles('sadim/kernel/version.mk', 'sadim/rootfs/sadim-rootfs.config', 'sadim/kernel/fragments/qemu-minimal.config') }}
+          key: sadim-v02-${{ runner.os }}-${{ hashFiles('sadim/kernel/version.mk', 'sadim/rootfs/sadim-rootfs.config', 'sadim/kernel/fragments/qemu-minimal.config') }}
           restore-keys: |
-            sadim-v02-\${{ runner.os }}-
+            sadim-v02-${{ runner.os }}-
 
       - name: Build Linux kernel
         run: bash sadim/kernel/build.sh
@@ -79,7 +84,7 @@ jobs:
           sha256sum -c sadim.iso.sha256
           {
             echo "Sadim OS v0.2-daily"
-            echo "Commit: \${GITHUB_SHA}"
+            echo "Commit: ${GITHUB_SHA}"
             echo "Built: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "ISO bytes: $(stat -c%s sadim.iso)"
             echo "Kernel: $(file bzImage)"
