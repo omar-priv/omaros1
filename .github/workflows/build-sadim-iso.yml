@@ -70,7 +70,8 @@ jobs:
           grep -q '/boot/vmlinuz-sadim' /tmp/sadim-iso-files.txt
           grep -q '/boot/initramfs-sadim.img' /tmp/sadim-iso-files.txt
           grep -q '/live/rootfs.squashfs' /tmp/sadim-iso-files.txt
-          gzip -dc "$INITRD" | cpio -t 2>/dev/null | grep -q 'lib/firmware/ath10k/QCA9377/hw1.0/firmware-5.bin'
+          gzip -dc "$INITRD" | cpio -t > /tmp/sadim-initramfs-files.txt
+          grep -qx 'lib/firmware/ath10k/QCA9377/hw1.0/firmware-5.bin' /tmp/sadim-initramfs-files.txt
           mkdir -p /tmp/sadim-iso-check
           xorriso -osirrox on -indev "$ISO" -extract /live/rootfs.squashfs /tmp/sadim-iso-check/rootfs.squashfs
           test -s /tmp/sadim-iso-check/rootfs.squashfs

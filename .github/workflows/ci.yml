@@ -1,4 +1,4 @@
-# Static repository checks only. The ISO build is a separate manual workflow.
+# Static repository checks; the complete ISO build runs in its own workflow.
 name: sadim-ci
 
 on:
