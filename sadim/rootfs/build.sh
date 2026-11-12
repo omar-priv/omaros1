@@ -49,6 +49,7 @@ required = {
     "BR2_PACKAGE_WESTON",
     "BR2_PACKAGE_WESTON_SHELL_DESKTOP",
     "BR2_PACKAGE_EUDEV",
+    "BR2_PACKAGE_SEATD_DAEMON",
     "BR2_PACKAGE_LINUX_FIRMWARE_ATHEROS_10K_QCA9377",
     "BR2_PACKAGE_WPA_SUPPLICANT_NL80211",
     "BR2_PACKAGE_IPROUTE2",
@@ -69,7 +70,13 @@ make BR2_DL_DIR="$OUT/dl-rootfs" \
 
 TARGET="$OUT/buildroot-build/target"
 test -x "$TARGET/usr/bin/weston" || { echo "ERROR: Weston binary missing"; exit 1; }
-test -x "$TARGET/bin/busybox" || { echo "ERROR: Buildroot BusyBox missing"; exit 1; }
+test -x "$TARGET/usr/bin/seatd" || { echo "ERROR: seatd daemon missing; enable BR2_PACKAGE_SEATD_DAEMON"; exit 1; }
+test -x "$TARGET/etc/init.d/S70seatd" || { echo "ERROR: Buildroot S70seatd service missing"; exit 1; }
+test -x "$TARGET/etc/init.d/S75-weston" || { echo "ERROR: ordered Weston S75 service missing"; exit 1; }
+grep -Eq '^video:[^:]*:28:.*sadim' "$TARGET/etc/group" || {
+  echo "ERROR: video group (GID 28) or Sadim membership missing"; exit 1;
+}
+test -x "$TARGET/bin/busybox" || { echo "ERROR: Buildroot BusyBox binary missing"; exit 1; }
 for applet in mkswap swapon swapoff; do
   "$TARGET/bin/busybox" --list | grep -qx "$applet" || {
     echo "ERROR: Buildroot BusyBox applet missing: $applet"

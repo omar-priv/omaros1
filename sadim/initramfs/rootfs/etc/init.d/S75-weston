@@ -1,0 +1,45 @@
+#!/bin/sh
+# Start Weston after Buildroot's S70seatd service using the checked-in config.
+set -u
+DAEMON=/usr/bin/weston
+PIDFILE=/var/run/weston.pid
+RUNDIR=/run/user/0
+SOCKET=wayland-0
+LOG=/var/log/weston.log
+start_weston() {
+  [ -x "$DAEMON" ] || { echo "[weston] ERROR: Weston binary missing"; return 1; }
+  [ -S /run/seatd.sock ] || { echo "[weston] ERROR: seatd socket missing"; return 1; }
+  mkdir -p "$RUNDIR" /var/log /var/run
+  chmod 700 "$RUNDIR"
+  rm -f "$PIDFILE" "$RUNDIR/$SOCKET"
+  export XDG_RUNTIME_DIR="$RUNDIR"
+  export WAYLAND_DISPLAY="$SOCKET"
+  export LIBSEAT_BACKEND=seatd
+  echo "[weston] launching DRM + pixman using /etc/xdg/weston/weston.ini"
+  start-stop-daemon -S -b -m -p "$PIDFILE" -x "$DAEMON" -- \
+    --backend=drm --renderer=pixman \
+    --config=/etc/xdg/weston/weston.ini \
+    --socket="$SOCKET" --log="$LOG"
+  i=0
+  while [ "$i" -lt 30 ]; do
+    [ -S "$RUNDIR/$SOCKET" ] && { echo "[weston] Wayland socket ready"; echo "SADIM-GUI-OK"; return 0; }
+    sleep 0.5
+    i=$((i + 1))
+  done
+  echo "[weston] ERROR: Wayland socket not created"
+  tail -n 60 "$LOG" 2>/dev/null || true
+  start-stop-daemon -K -p "$PIDFILE" 2>/dev/null || true
+  rm -f "$PIDFILE"
+  return 1
+}
+stop_weston() {
+  start-stop-daemon -K -p "$PIDFILE" 2>/dev/null || true
+  rm -f "$PIDFILE" "$RUNDIR/$SOCKET"
+}
+case "$1" in
+  start) start_weston ;;
+  stop) stop_weston ;;
+  restart) stop_weston; sleep 1; start_weston ;;
+  status) [ -S "$RUNDIR/$SOCKET" ] && echo "Weston ready" || { echo "Weston unavailable"; exit 1; } ;;
+  *) echo "Usage: $0 {start|stop|restart|status}"; exit 1 ;;
+esac

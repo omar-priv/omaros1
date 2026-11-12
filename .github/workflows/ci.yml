@@ -70,7 +70,9 @@ jobs:
           ! grep -Eq '^BR2_PACKAGE_(FRIBIDI|HARFBUZZ)=' sadim/rootfs/sadim-rootfs.config
           grep -q '^BR2_KERNEL_HEADERS_6_12=y$' sadim/rootfs/sadim-rootfs.config
           grep -q '^BR2_PACKAGE_BUSYBOX_SHOW_OTHERS=y$' sadim/rootfs/sadim-rootfs.config
-          ! grep -q -- '--no-config' sadim/initramfs/rootfs/etc/init.d/S30-weston
+          grep -q '^BR2_PACKAGE_SEATD_DAEMON=y$' sadim/rootfs/sadim-rootfs.config
+          grep -q '^video:x:28:sadim$' sadim/initramfs/rootfs/etc/group
+          ! grep -q -- '--no-config' sadim/initramfs/rootfs/etc/init.d/S75-weston
           ! grep -q 'BRAVE_EXPECTED_SHA256=""' sadim/initramfs/rootfs/etc/init.d/S45-brave-install
           grep -Fq 'scripts/config --enable BLOCK --enable SCSI --enable USB_SUPPORT --enable USB --enable USB_STORAGE --enable MISC_FILESYSTEMS --enable NETDEVICES --enable WLAN --enable SOUND' sadim/kernel/build.sh
           grep -Fq 'CONFIG_BLOCK CONFIG_SCSI CONFIG_USB_SUPPORT CONFIG_USB CONFIG_USB_STORAGE CONFIG_MISC_FILESYSTEMS CONFIG_NETDEVICES CONFIG_WLAN CONFIG_SOUND' sadim/kernel/build.sh
@@ -88,6 +90,8 @@ jobs:
           grep -q 'SADIM-LIVE-OK' sadim/initramfs/init
           grep -Fq 'for dev in /dev/sr* /dev/sd*' sadim/initramfs/init
           grep -q 'firmware-5.bin' sadim/initramfs/build.sh
+          grep -q 'S70seatd' sadim/initramfs/rootfs/etc/init.d/S20-seatd
+          grep -q 'S75-weston' sadim/initramfs/rootfs/etc/init.d/S20-seatd
 
       - name: Verify key project documentation exists
         run: |

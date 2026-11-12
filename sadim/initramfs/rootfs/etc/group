@@ -3,4 +3,6 @@ tty:x:5:
 sadim:x:1000:sadim
 seat:x:998:sadim
 seatd:x:999:
+video:x:28:sadim
+audio:x:29:sadim
 sudo:x:27:sadim
