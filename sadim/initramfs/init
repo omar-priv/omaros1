@@ -53,8 +53,15 @@ done
 if [ -n "$LIVE_ROOT" ]; then
   echo "[init] live rootfs found: $LIVE_ROOT"
   RW="/mnt/rw"; NEW="/mnt/new"
-  mkdir -p "$RW/upper" "$RW/work" "$NEW"
-  mount -t tmpfs tmpfs "$RW" 2>/dev/null || echo "[init] WARN: tmpfs rw mount failed"
+  mkdir -p "$RW" "$NEW"
+  if ! mount -t tmpfs tmpfs "$RW" 2>/dev/null; then
+    echo "[init] FATAL: cannot mount writable tmpfs — dumping diagnostics"
+    cat /proc/filesystems 2>/dev/null | head -20
+    exec sh
+  fi
+  # Create overlay directories AFTER mounting tmpfs; otherwise the mount
+  # hides the directories and overlayfs cannot start.
+  mkdir -p "$RW/upper" "$RW/work"
   if ! mount -t overlay overlay \
        -o "lowerdir=$RO,upperdir=$RW/upper,workdir=$RW/work" "$NEW" 2>/dev/null; then
     echo "[init] FATAL: overlay mount failed — dumping diagnostics"
