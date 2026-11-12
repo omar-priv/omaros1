@@ -1,91 +1,92 @@
 #!/bin/sh
-# Sadim OS — init v0.5 (محمّل live: initramfs → squashfs+overlayfs → جذر مدمج)
-# - SADIM-BOOT-OK: وصول النظام إلى init (بوابة المرحلة 2 — ثابتة لا تتغير)
-# - مسار live rootfs: squashfs على vda (CI) أو sr0/sda (ISO حقيقي) → overlayfs → switch_root
-#   إلى جذر البناء (Buildroot) — النظام الحي قابل للكتابة عبر tmpfs
-# - مسار plain initramfs (توافق المرحلة 2): exec busybox init من الـ initramfs نفسه
-# - وضع CI (SADIM_CI=1): يُنهي الإقلاع نظيفاً من الجذر المدمج (S99-ci-end) أو من المحمّل
+# Sadim OS Live init: discover the boot medium, mount squashfs read-only,
+# and switch to a tmpfs-backed overlay. No disk is mounted read-write here.
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin
-
-mount -t proc proc /proc 2>/dev/null    || echo "[init] WARN: proc mount failed"
-mount -t sysfs sysfs /sys 2>/dev/null   || echo "[init] WARN: sysfs mount failed"
+mount -t proc proc /proc 2>/dev/null || echo "[init] WARN: proc mount failed"
+mount -t sysfs sysfs /sys 2>/dev/null || echo "[init] WARN: sysfs mount failed"
 mount -t devtmpfs devtmpfs /dev 2>/dev/null || echo "[init] WARN: devtmpfs mount failed"
-
-hostname sadim 2>/dev/null
-
+mkdir -p /run /mnt/ro /mnt/sq /mnt/rw /mnt/new
+hostname sadim 2>/dev/null || true
 echo ""
 echo "=================================================="
-echo "   Sadim OS (سديم) — live boot v0.5"
+echo "   Sadim OS (سديم) — Live boot"
 echo "=================================================="
 echo "kernel : $(uname -r)"
-echo "uptime : $(cut -d ' ' -f1 /proc/uptime) s"
-if [ -r /proc/meminfo ]; then
-  echo "mem    : $(grep '^MemTotal:' /proc/meminfo)"
-fi
+[ -r /proc/uptime ] && echo "uptime : $(cut -d ' ' -f1 /proc/uptime) s"
+[ -r /proc/meminfo ] && echo "mem    : $(grep '^MemTotal:' /proc/meminfo)"
 echo ""
-
 echo "SADIM-BOOT-OK"
 echo ""
 
-# ---------- 1) مسار الجذر الحي: squashfs + overlayfs ----------
-RO="/mnt/ro"
+RO=/mnt/ro
+SQ=/mnt/sq
 LIVE_ROOT=""
-mkdir -p "$RO"
-for cand in /dev/vda /dev/sr0 /dev/sda /dev/sdb /dev/sda1 /dev/sdb1; do
-  [ -b "$cand" ] || continue
-  if mount -o ro -t squashfs "$cand" "$RO" 2>/dev/null; then
-    LIVE_ROOT="squashfs:$cand"; break
+try_device() {
+  dev="$1"
+  [ -b "$dev" ] || return 1
+  if mount -o ro -t squashfs "$dev" "$RO" 2>/dev/null; then
+    if [ -x "$RO/sbin/init" ]; then LIVE_ROOT="squashfs:$dev"; return 0; fi
+    umount "$RO" 2>/dev/null || true
   fi
-  if mount -o ro -t iso9660 "$cand" "$RO" 2>/dev/null; then
-    if [ -f "$RO/live/rootfs.squashfs" ]; then
-      mkdir -p /mnt/sq
-      if mount -t squashfs -o ro,loop "$RO/live/rootfs.squashfs" /mnt/sq 2>/dev/null; then
-        umount "$RO"
-        RO="/mnt/sq"
-        LIVE_ROOT="iso9660+loop:$cand"
-        break
+  if mount -o ro -t iso9660 "$dev" "$RO" 2>/dev/null; then
+    if [ -s "$RO/live/rootfs.squashfs" ]; then
+      mkdir -p "$SQ"
+      if mount -t squashfs -o ro,loop "$RO/live/rootfs.squashfs" "$SQ" 2>/dev/null; then
+        if [ -x "$SQ/sbin/init" ]; then
+          umount "$RO" 2>/dev/null || true
+          RO="$SQ"
+          LIVE_ROOT="iso9660+loop:$dev"
+          return 0
+        fi
+        umount "$SQ" 2>/dev/null || true
       fi
     fi
-    umount "$RO"
+    umount "$RO" 2>/dev/null || true
   fi
+  return 1
+}
+# USB storage enumeration can finish shortly after /init starts. Retry for up
+# to 20 seconds and scan whole disks plus partitions (including NVMe/MMC).
+if command -v mdev >/dev/null 2>&1; then mdev -s 2>/dev/null || true; fi
+attempt=1
+while [ "$attempt" -le 40 ] && [ -z "$LIVE_ROOT" ]; do
+  for dev in /dev/sr* /dev/sd* /dev/vd* /dev/nvme*n* /dev/mmcblk*; do
+    [ -b "$dev" ] || continue
+    if try_device "$dev"; then break; fi
+  done
+  [ -n "$LIVE_ROOT" ] && break
+  sleep 0.5
+  attempt=$((attempt + 1))
 done
-
 if [ -n "$LIVE_ROOT" ]; then
   echo "[init] live rootfs found: $LIVE_ROOT"
-  RW="/mnt/rw"; NEW="/mnt/new"
-  mkdir -p "$RW" "$NEW"
-  if ! mount -t tmpfs tmpfs "$RW" 2>/dev/null; then
-    echo "[init] FATAL: cannot mount writable tmpfs — dumping diagnostics"
-    cat /proc/filesystems 2>/dev/null | head -20
+  RW=/mnt/rw
+  NEW=/mnt/new
+  if ! mount -t tmpfs -o nosuid,nodev tmpfs "$RW" 2>/dev/null; then
+    echo "[init] FATAL: cannot mount writable tmpfs"
+    cat /proc/filesystems 2>/dev/null
     exec sh
   fi
-  # Create overlay directories AFTER mounting tmpfs; otherwise the mount
-  # hides the directories and overlayfs cannot start.
-  mkdir -p "$RW/upper" "$RW/work"
-  if ! mount -t overlay overlay \
-       -o "lowerdir=$RO,upperdir=$RW/upper,workdir=$RW/work" "$NEW" 2>/dev/null; then
-    echo "[init] FATAL: overlay mount failed — dumping diagnostics"
-    cat /proc/filesystems 2>/dev/null | head -20
+  # The tmpfs mount hides old contents; create overlay dirs afterwards.
+  mkdir -p "$RW/upper" "$RW/work" "$NEW/proc" "$NEW/sys" "$NEW/dev" "$NEW/run"
+  if ! mount -t overlay overlay -o "lowerdir=$RO,upperdir=$RW/upper,workdir=$RW/work" "$NEW" 2>/dev/null; then
+    echo "[init] FATAL: overlay mount failed"
+    cat /proc/filesystems 2>/dev/null
     exec sh
   fi
   echo "SADIM-LIVE-OK"
-  if ! mount -o move /proc "$NEW/proc" 2>/dev/null; then
-    mkdir -p "$NEW/proc"; mount -t proc proc "$NEW/proc"
-  fi
-  if ! mount -o move /sys "$NEW/sys" 2>/dev/null; then
-    mkdir -p "$NEW/sys"; mount -t sysfs sysfs "$NEW/sys"
-  fi
-  if ! mount -o move /dev "$NEW/dev" 2>/dev/null; then
-    mkdir -p "$NEW/dev"; mount -t devtmpfs devtmpfs "$NEW/dev"
-  fi
-  echo "[init] switching root to merged live system"
+  mount -o move /proc "$NEW/proc" 2>/dev/null || mount -t proc proc "$NEW/proc"
+  mount -o move /sys "$NEW/sys" 2>/dev/null || mount -t sysfs sysfs "$NEW/sys"
+  mount -o move /dev "$NEW/dev" 2>/dev/null || mount -t devtmpfs devtmpfs "$NEW/dev"
+  mount -t tmpfs -o nosuid,nodev tmpfs "$NEW/run" 2>/dev/null || true
+  echo "[init] switching root to merged Live system"
   exec switch_root "$NEW" /sbin/init
 fi
-
-# ---------- 2) مسار plain initramfs (توافق المرحلة 2 / بلا rootfs خارجي) ----------
-if grep -qs "SADIM_CI=1" /proc/cmdline; then
-  sleep 1
-  reboot -f
-fi
-echo "[init] no live rootfs found — plain initramfs shell"
+echo "[init] ERROR: no usable Live medium found after 20 seconds"
+echo "[init] detected block devices:"
+ls -l /dev/sr* /dev/sd* /dev/vd* /dev/nvme*n* /dev/mmcblk* 2>/dev/null || true
+echo "[init] supported filesystems:"
+cat /proc/filesystems 2>/dev/null || true
+if grep -qs 'SADIM_CI=1' /proc/cmdline 2>/dev/null; then sleep 1; reboot -f; fi
+echo "[init] emergency initramfs shell; internal disks were not mounted"
 exec /sbin/init

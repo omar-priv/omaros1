@@ -1,44 +1,32 @@
-# استراتيجية الاختبارات — Testing Strategy
+# Testing strategy — Sadim OS
 
-> محدثة 2026-11-11. القاعدة الحاكمة من الميثاق: لا نخلط بين نجاح البناء والإقلاع والواجهة
-> والعتاد والاستخدام اليومي — كل مستوى له بوابته الخاصة.
+Updated: 12 November 2026.
 
-## الطبقات والبوابات
+The user selected direct ISO/USB testing. Do not run QEMU as part of this project's current acceptance path.
 
-| الطبقة | ما تثبته فعلياً | البيئة | الحالة |
-|---|---|---|---|
-| Docs/Repo Lint | سلامة هيكل المشروع والوثائق | CI (ubuntu) | ✅ تعمل الآن (ci.yml) |
-| Unit | وحدات userland/أدواتنا | CI | 🔜 Phase 3+ |
-| Integration | initramfs/init يقرأ كونفيغ ويقيم الخدمات | CI + QEMU | 🔜 Phase 3-4 |
-| **Boot Test** | النواة تقلع، init يعمل، طابور إدخال حي | CI + QEMU `-nographic` | ✅ Phase 2 — `SADIM-BOOT-OK` ×3 (run #5) |
-| System | الجذر الحي يعمل (squashfs+overlay+switch_root + خدمات + DHCP) | CI + QEMU virtio | 🔄 Phase 3 — بوابة `sadim-phase3-rootfs` (4 علامات ×3) قيد التشغيل |
-| System GUI | واجهة Weston تُرسَى فعلياً (بكسلات عبر QMP screendump) | CI + QEMU virtio-gpu | 🔄 Phase 4 — بوابة `sadim-phase4-gui` (5 علامات ×3) قيد التشغيل |
-| System Apps | Qt6base linuxfb يُبنى في rootfs + تطبيق RTL تجريبي | CI + QEMU | 🔄 Phase 5 — جزء منBuildroot rootfs |
-| Performance | قياسات RAM/إقلاع/IO قبل وبعد كل تغيير مؤثر | QEMU ثم عتاد حي | 🔜 Phase 6-7 |
-| Hardware | QCA9377/صوت/لمس/طاقة/USB على العتاد الحقيقي | USB Live (بموافقة صريحة) | ⏳ تنتظر تجربة المالك |
-| Security | حدود الصلاحيات، سلامة الحزم، Threat Model | CI + مراجعة | 🔜 تدريجياً من Phase 4 |
-| Regression/Recovery | إعادة تشغيل بعد أعطال، سلامة بيانات | CI + QEMU | 🔜 من Phase 4 |
+## Automated checks
 
-## قواعد إثبات النتيجة (لا استثناءات)
+1. Static CI parses all workflow YAML files.
+2. CI runs sh -n / bash -n against project shell scripts.
+3. CI rejects known invalid Buildroot symbols, the old --no-config Weston flag and the empty-hash Brave installer.
+4. Buildroot make defconfig is followed by a check that every requested BR2_*=y symbol survived Kconfig.
+5. Rootfs build verifies Weston, the QCA9377 firmware file and rootfs.squashfs.
+6. ISO build verifies required boot files, hybrid BIOS metadata, embedded live/rootfs.squashfs and SHA256 before upload.
 
-1. كل نتيجة اختبار تُسجل: الاسم، البيئة، الإعدادات، النتيجة، اللوج، المشاكل المعروفة.
-2. بناء ISO ناجح ≠ إقلاع ناجح؛ إقلاع في QEMU ≠ توافق عتاد حقيقي — تُفصل دائماً.
-3. لا تعطيل اختبارات فاشلة لإظهار أخضر وهمي؛ الفاشل يُصلح أو يُوثق بعله المفتوح.
-4. المراجعات (Code Review + Adversarial + Security + Performance) تُطبق على كل تغيير مؤثر
-   وفق دورات الميثاق، وتُسجل نتائجها في تقرير نهاية المرحلة.
+## What automated tests do not prove
 
-## قالب سجل الاختبار (يُستخدم من Phase 3)
+A build or a Weston socket does not prove the custom UI, Wi-Fi, Realtek sound, touchpad, power management, idle RAM or disk-I/O performance. The custom Windows-like shell and graphical applications are not implemented yet.
 
-```
-### TEST-<n>: <الاسم>
-- التاريخ/البيئة:
-- الإعدادات:
-- النتيجة: PASS/FAIL + الأدلة (لوج/لقطات):
-- المشاكل المعروفة:
-```
+## Hardware acceptance checklist
 
-سجل الاختبارات المكتملة يُحفظ في: `docs/test-logs.md` (يُنشأ عند أول اختبار فعلي).
+Only after a fresh reviewed ISO artifact exists:
 
-## ما لم يُختبر بعد (صراحة)
+- Confirm the correct USB device before writing; the USB stick will be erased.
+- Boot using Acer F12 and Legacy BIOS.
+- Confirm that the internal Windows disk is not mounted read-write.
+- Confirm Live rootfs and Weston display.
+- Test keyboard, touchpad, Intel graphics, USB, Ethernet, QCA9377 Wi-Fi, audio and battery.
+- Confirm /dev/zram0 exists and /proc/swaps shows zRAM active.
+- Measure idle RAM, boot time and disk I/O. Do not claim performance goals before measurement.
 
-كل شيء خارج فحص النظام المضيف: لا إقلاع، لا عتاد، لا واجهة. أول إقلاع فعلي = Phase 3 في QEMU/CI.
+If any test fails, record the exact kernel log and service log and keep the issue open until fixed and retested.

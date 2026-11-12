@@ -1,7 +1,6 @@
 name: Sadim OS v0.2-daily ISO
 
-# Deliberately manual-only while an existing immutable build is running.
-# Dispatch a new build after changes are reviewed; do not cancel the active run.
+# Manual-only so a source push cannot cancel or replace an active ISO build.
 on:
   workflow_dispatch:
 
@@ -9,7 +8,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: sadim-iso-${{ github.ref }}
+  group: sadim-iso-\${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -36,31 +35,39 @@ jobs:
             sadim/output/dl
             sadim/output/dl-rootfs
             sadim/output/ccache
-          key: sadim-v02-${{ runner.os }}-${{ hashFiles('sadim/kernel/version.mk', 'sadim/rootfs/sadim-rootfs.config', 'sadim/kernel/fragments/qemu-minimal.config') }}
+          key: sadim-v02-\${{ runner.os }}-\${{ hashFiles('sadim/kernel/version.mk', 'sadim/rootfs/sadim-rootfs.config', 'sadim/kernel/fragments/qemu-minimal.config') }}
           restore-keys: |
-            sadim-v02-${{ runner.os }}-
+            sadim-v02-\${{ runner.os }}-
 
       - name: Build Linux kernel
         run: bash sadim/kernel/build.sh
 
-      - name: Build initramfs
-        run: bash sadim/initramfs/build.sh
-
-      - name: Build complete root filesystem
+      - name: Build complete root filesystem (Buildroot)
         run: bash sadim/rootfs/build.sh
+
+      - name: Build initramfs (including matching QCA9377 firmware)
+        run: bash sadim/initramfs/build.sh
 
       - name: Build hybrid BIOS and USB ISO
         run: bash sadim/iso/build-iso.sh
 
-      - name: Verify ISO structure and metadata
+      - name: Verify ISO structure, boot files and firmware
         run: |
           set -euo pipefail
-          test -s sadim/output/sadim.iso
-          file sadim/output/sadim.iso
-          xorriso -indev sadim/output/sadim.iso -report_el_torito as_mkisofs
-          xorriso -indev sadim/output/sadim.iso -find / -type f -print
+          ISO=sadim/output/sadim.iso
+          INITRD=sadim/output/initramfs.cpio.gz
+          test -s "$ISO"
+          test -s "$INITRD"
+          file "$ISO"
+          xorriso -indev "$ISO" -report_el_torito as_mkisofs
+          xorriso -indev "$ISO" -find / -type f -print | tee /tmp/sadim-iso-files.txt
+          grep -q '/isolinux/isolinux.bin' /tmp/sadim-iso-files.txt
+          grep -q '/boot/vmlinuz-sadim' /tmp/sadim-iso-files.txt
+          grep -q '/boot/initramfs-sadim.img' /tmp/sadim-iso-files.txt
+          grep -q '/live/rootfs.squashfs' /tmp/sadim-iso-files.txt
+          gzip -dc "$INITRD" | cpio -t 2>/dev/null | grep -q 'lib/firmware/ath10k/QCA9377/hw1.0/firmware-5.bin'
           mkdir -p /tmp/sadim-iso-check
-          xorriso -osirrox on -indev sadim/output/sadim.iso -extract /live/rootfs.squashfs /tmp/sadim-iso-check/rootfs.squashfs
+          xorriso -osirrox on -indev "$ISO" -extract /live/rootfs.squashfs /tmp/sadim-iso-check/rootfs.squashfs
           test -s /tmp/sadim-iso-check/rootfs.squashfs
           unsquashfs -s /tmp/sadim-iso-check/rootfs.squashfs
 
@@ -69,14 +76,16 @@ jobs:
         run: |
           cd sadim/output
           sha256sum sadim.iso > sadim.iso.sha256
+          sha256sum -c sadim.iso.sha256
           {
             echo "Sadim OS v0.2-daily"
-            echo "Commit: ${GITHUB_SHA}"
+            echo "Commit: \${GITHUB_SHA}"
             echo "Built: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "ISO bytes: $(stat -c%s sadim.iso)"
             echo "Kernel: $(file bzImage)"
-            echo "Boot test: NOT RUN (user requested direct ISO build without QEMU)"
+            echo "Boot test: NOT RUN (direct USB trial requested; QEMU is not used)"
             echo "Hardware test: NOT PERFORMED"
+            echo "Custom graphical app suite: NOT IMPLEMENTED"
           } > BUILD-REPORT.txt
 
       - name: Upload bootable Live ISO
@@ -99,5 +108,6 @@ jobs:
           name: sadim-v02-build-diagnostics
           path: |
             sadim/output/buildroot-build/build.log
+            sadim/output/buildroot-build/.config
           if-no-files-found: ignore
           retention-days: 7

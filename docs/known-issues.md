@@ -1,62 +1,31 @@
-# المشاكل المعروفة — Known Issues
+# Known issues and release blockers
 
-> محدثة 2026-11-11. الترتيب حسب الخطورة. لا مشكلة تُخفى ولا تُغلق إلا بمراجع إصلاح واختبار.
+Updated: 12 November 2026. Items stay open until a fix and its relevant test both exist.
 
-## Critical (تمنع إطلاق أي إصدار حتى معالجتها)
+## Critical / release-blocking
 
-- (لا يوجد — CI-1 أُغلقت بالدليل أدناه في قسم المُغلقة)
+- GUI application gap: Weston is a compositor, not the finished Sadim desktop. The former taskbar, Start menu, file explorer, notes, calculator, settings and task-manager scripts are terminal prototypes, not native Wayland clients. The legacy taskbar launcher is disabled. A real graphical desktop/application suite remains unimplemented.
+- No reviewed ISO yet: Run #9 was started from commit f1dc985 before the fixes in this review. Keep it as an independent build, but do not flash or advertise it as the reviewed release.
+- Hardware compatibility unverified: no current proof for Intel HD 620 DRM, QCA9377 Wi-Fi/firmware, Realtek audio, touchpad, ACPI/battery or USB boot on the Acer itself.
 
-## High (تؤثر على قرارات معمارية أو تجربة حقيقية)
+## High
 
-- **HW-1: القرص SMR [م]** — كتابات عشوائية متكررة تسبب تصلّب أداء. التخفيف المعتمد: zRAM افتراضياً
-  (بدون swap على القرص)، noatime، تجميع كتابات، لا فهرسة خلفية. التحقق: قياس iostat في Phase 6.
-- **HW-2: برمجية QCA9377 firmware-6.bin لديها مشكلات أداء معروفة** (مصدر: Pop!_OS #1470)؛
-  التخفيف: تثبيت firmware-5.bin افتراضياً واختبار الاتصال فعلياً في Phase 7. المصدر داخل دراسة الخيارات.
-- **HW-3: بطارية بصحة ≈60% [م]** — وقت تشغيل قصير؛ إدارة الطاقة تُختبر فعلياً (Phase 7) قبل أي ادعاء.
-- **ENV-1: لا WSL distro ولا QEMU ولا أدوات بناء محلياً [م]** — البناء يعتمد على CI؛ تثبيت محلي
-  (لو لزم) يحتاج صلاحيات admin وبموافقة صريحة من المستخدم وتحديد السبب أولاً.
-- **HW-4: بروتوكول لوحة اللمس غير محدد [م]** — تظهر كـ HID عام؛ التحديد الفعلي يتطلب إقلاع حي.
+- Buildroot configuration needed correction: old config used wrong or nonexistent symbols for QCA9377 firmware, UPower, procps, IP tools, interface tools, zRAM and others. The config now uses Buildroot's QCA9377, iproute2, net-tools and procps-ng symbols; an automated check fails if Kconfig drops a requested y option. A new build must prove this gate.
+- USB discovery race: init now scans common optical, SATA/SCSI, virtio, NVMe and MMC device names for up to 20 seconds, mounting candidates read-only. Real USB boot still needs testing.
+- Weston startup: startup now waits for seatd and a Wayland socket and uses the config file instead of --no-config. Weston may still fail on the real Intel DRM/seat setup; inspect /var/log/weston.log.
+- zRAM: kernel config now builds zRAM in; the init service checks the actual block device and active swap. Needs fresh build verification. The service no longer disables other swap devices.
+- Brave installer: automatic network download is disabled. The old installer used an empty expected SHA256 and could install an unverified latest archive.
+- Browser and Wine: intentionally deferred from the lightweight base; no working GUI integration was demonstrated.
+- No UEFI claim: current ISO is Legacy BIOS / hybrid USB only.
 
 ## Medium
 
-- **HW-5: Optimus (MX130)** — مسار Intel فقط للإصدار الأول (ADR-001 §4)؛ دعم NVIDIA لاحق بمخاطره.
-- **HW-6: صوت Realtek** — إعداد pin/codec الدقيق يحتاج اختباراً حياً؛ لا ادعاء دعم قبل Phase 7.
+- Performance targets (idle RAM, boot time, SMR I/O) are not measured.
+- Custom Arabic RTL desktop styling and application launchers are not implemented. Weston uses its own desktop shell for the initial compositor stage.
+- SADIM-GUI-OK means only that Weston created a Wayland socket; it does not mean the custom desktop or apps are ready.
 
-## Low
+## Safety rules
 
-- **ENV-3: هوية Git المحلية مبدئية** — `sadim-agent` من الآن (commits المراحل الأولى حملت `sadeem-agent` — فرق تجميلي فقط)؛ يُستبدل بهوية المالك عند ربط المستودع.
-- **ENV-4: ذاكرة Intel HD 620 مشتركة من RAM [م]** — ملاحظة تصميمية لاحتياطات الذاكرة، ليست عيباً.
-
-## مغلقة (سجل الإصلاحات — بمراجع)
-
-- **ENV-2: GitHub remote غير موجود** → **أُغلقت**: أُنشئ فعلياً `omar-priv/omaros1` (Private) وارتبط وارُفع
-  (main، بلا force)؛ دليل: push `782b734` + lint أخضر (run 43073334253).
-- **CI-2: اسم خطوة YAML يحوي «: » غير مقتبس ⇒ Invalid workflow file + startup_failure بلا jobs**
-  → **أُغلقت**: إصلاح بالاقتباس (`1bd5a5e`) + رادع انحداري: خطوة تحقق PyYAML لكل ملفات الـ workflows في job الـ lint.
-  دليل التشخيص: PyYAML line 51 col 38 + run 43073326178.
-- **CI-3: BusyBox 1.36.1 — applet `tc` لا يترجم ضد ترويسات نواة حديثة** (بنى CBQ مُزالة من UAPI)
-  → **أُغلقة**: تعطيل صريح للـ applet في تكوين BusyBox (`53d16e4`) — غير مطلوب في initramfs سديم.
-  دليل: لوج job 130709960501 (`networking/tc.c:256 … struct tc_cbq_lssopt` → `Error 1`).
-  قاعدة: أي applet يُعطَّل يوثَّق هنا مع سبب عدم الحاجة.
-- **CI-4: `yes "" | make oldconfig` مع pipefail = broken pipe يجهض الخطوة** (busybox kconfig لا يملك
-  olddefconfig أصلاً) → **أُغلقة**: إزالة خطوة إعادة التوليد كلياً (`3d59d8c`) — تعديل رموز موجودة في
-  .config مباشرة كافٍ. دليل: لوج run #4 (`yes: standard output: Broken pipe` → exit 1).
-- **CI-1: مسار بناء/اختبار الإقلاع** → **أُغلقة**: `kernel-boot` run #5 (43080783543) نجح كاملاً —
-  بناء نواة 6.12.117 fragment v0.2 + init v0.2 + **SADIM-BOOT-OK ×3 متتالية**
-  (`kernel : 6.12.117-sadim-phase2`، كل إقلاع ≈3 ثوانٍ TCG، job 130732469698).
-  + `live-iso` run #2 (43080783447): **ISO بنيت فعلياً (5MB، BIOS هجين) وقلعت ×3 عبر مسار الإقلاع
-  الحقيقي SeaBIOS→isolinux→init** (job 130732457484) → الإصدار v0.1.0-live منشئ بالـ ISO.
-- **CI-5: تربل BusyBox غير مثبت البصمة (توريد)** → **أُغلقة**: تحميل التربل الرسمي من busybox.net عبر
-  HTTPS وحساب SHA256 محلياً (`b8cc24c9574d809e7279c3be349795c5d5ceb6fdf19ca709f80cde50e47de314`)
-  وتثبيته كثابت في `sadim/initramfs/build.sh` مع `sha256sum -c` يجهض البناء عند أي اختلاف — بنمط تحقق
-  نواة kernel.org نفسه. **دليل الإغلاق:** run #6 (43085770179, job 130749626216) سطر
-  `busybox-1.36.1.tar.bz2: OK` والبناء كامل ناجح.
-- **ENV-4: شهادة TLS لـ buildroot.org منتهية الصلاحية (2026-11-11)** → **تخفيف مُنفَّذ**: التنزيل من
-  المرآة الرسمية github.com/buildroot/buildroot (وسم `2025.02.19`، tag object `26cf1107…`) مثبت البصمة
-  `0fc9583d…c98` مع `sha256sum -c` في `sadim/rootfs/build.sh`. الدليل: خطأ
-  `ssl.SSLCertVerificationError: certificate has expired` من محاولة تنزيل حقيقية. يُعاد فحص الشهادة
-  دورياً — إن أُصلحت يمكن العودة للمصدر الأصلي (نفس الوسم، البصمة تُعاد الحساب).
-
-## قواعد الإغلاق
-
-لا تُغلق مشكلة إلا بـ: إصلاح فعلي + اختبار يثبت الإصلاح + تحديث هذه الوثيقة بالنتيجة.
+- Never run hdparm -W, formatting, partitioning or automatic read-write mounts against /dev/sda or any guessed drive name.
+- The Live OS must use a read-only SquashFS lower layer and tmpfs upper layer.
+- Never claim hardware support without a test on the actual laptop.

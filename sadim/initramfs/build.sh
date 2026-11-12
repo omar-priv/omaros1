@@ -1,15 +1,12 @@
 #!/usr/bin/env bash
-# Sadim OS — بناء initramfs: BusyBox ثابت + init خاص بالمشروع (المرحلة 2)
-# المخرجات: sadim/output/initramfs.cpio.gz
+# Build static BusyBox initramfs plus Sadim init, service overlay and Wi-Fi firmware.
 set -euo pipefail
-
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/output"
 mkdir -p "$OUT"
 cd "$OUT"
 
 BVB="busybox-1.36.1"
-# بصمة التربل الرسمي (من busybox.net عبر HTTPS، محسوبة وتثبيت) — أي اختلاف يجهض البناء
 BB_SHA256="b8cc24c9574d809e7279c3be349795c5d5ceb6fdf19ca709f80cde50e47de314"
 if [ ! -x "$BVB/busybox" ]; then
   if [ ! -d "$BVB" ]; then
@@ -19,32 +16,50 @@ if [ ! -x "$BVB/busybox" ]; then
     tar xf "$BVB.tar.bz2"
   fi
   cd "$BVB"
-  echo "[sadim] busybox defconfig + STATIC"
+  echo "[sadim] BusyBox defconfig + static build"
   make defconfig >/dev/null
   sed -i 's/^# CONFIG_STATIC is not set/CONFIG_STATIC=y/' .config
-  # applet tc لا يترجم ضد ترويسات نواة حديثة (تُزيل بنى CBQ) وهو غير مطلوب في سديم — تعطيل صريح
-  # ملاحظة: تعديل رموز موجودة في .config مباشرة كافٍ — لا حاجة لإعادة توليد
-  # (busybox kconfig لا يملك olddefconfig، وyes|oldconfig يفشل مع pipefail على broken pipe)
+  # BusyBox tc does not build against the modern kernel UAPI and is not used.
   sed -i 's/^CONFIG_TC=y/# CONFIG_TC is not set/' .config
   make -j"$(nproc)" >/dev/null
   cd ..
 fi
 
-rm -rf staging
-mkdir -p staging/{bin,sbin,usr/bin,usr/sbin,proc,sys,dev,etc,root,tmp,home/sadim,var/log,var/run}
-make -C "$BVB" CONFIG_PREFIX="$PWD/staging" install >/dev/null
+# Fail early if required early-boot applets are absent.
+for applet in mount umount switch_root mdev mkswap swapon swapoff; do
+  "$BVB/busybox" --list | grep -qx "$applet" || {
+    echo "ERROR: required BusyBox applet missing: $applet"
+    exit 1
+  }
+done
 
-# init خاص بـ Sadim OS (المصدر الحقيقي للسلوك)
+# The ath10k driver is built into the kernel, so its firmware must be present
+# in initramfs before the full SquashFS root can be mounted.
+FW_SOURCE="$OUT/buildroot-build/target/lib/firmware/ath10k/QCA9377"
+test -s "$FW_SOURCE/hw1.0/firmware-5.bin" || {
+  echo "ERROR: Buildroot QCA9377 firmware-5.bin missing; build rootfs before initramfs"
+  exit 1
+}
+
+rm -rf staging
+mkdir -p staging/{bin,sbin,usr/bin,usr/sbin,proc,sys,dev,etc,root,tmp,home/sadim,var/log,var/run,run,lib/firmware/ath10k}
+make -C "$BVB" CONFIG_PREFIX="$PWD/staging" install >/dev/null
+mkdir -p staging/lib/firmware/ath10k/QCA9377
+cp -a "$FW_SOURCE/." staging/lib/firmware/ath10k/QCA9377/
+
 cp "$ROOT/initramfs/init" staging/init
 chmod 755 staging/init
-
-# طبقة النظام: /etc (هوية سديم، مستخدمون، inittab) — ملفات حقيقية قابلة للمراجعة
 cp -a "$ROOT/initramfs/rootfs/." staging/
 chmod 755 staging/etc/rcS staging/bin/autologin
+# rcS executes these files directly; set and preserve executable mode.
+if [ -d staging/etc/init.d ]; then
+  find staging/etc/init.d -maxdepth 1 -type f -name 'S*' -exec chmod 755 {} +
+fi
 chmod 644 staging/etc/passwd staging/etc/group staging/etc/inittab \
           staging/etc/profile staging/etc/os-release staging/etc/issue \
           staging/etc/motd staging/etc/hostname
 
+test -s staging/lib/firmware/ath10k/QCA9377/hw1.0/firmware-5.bin
 cd staging
 find . | cpio -o -H newc --owner root:root --quiet | gzip > "$OUT/initramfs.cpio.gz"
 cd ..

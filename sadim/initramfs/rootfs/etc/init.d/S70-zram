@@ -1,58 +1,30 @@
 #!/bin/sh
-# Sadim OS — خدمة zRAM (مرحلة 7 — بديل swap للهارد SMR)
+# Initialize kernel built-in zRAM; never disable other swap devices.
 set -u
-
-ZRAM_DEV="/dev/zram0"
-ZRAM_SIZE="256M"
-
-log() { echo "[zram] $*"; }
-
+ZRAM_DEV=/dev/zram0
+ZRAM_SIZE_BYTES=268435456
 start_zram() {
-  log "بدء تهيئة zRAM (بديل swap للهارد SMR)…"
-
-  modprobe zram 2>/dev/null || log "WARN: تعذر تحميل zram"
-
-  if [ -b "$ZRAM_DEV" ]; then
-    echo "$ZRAM_SIZE" > /sys/block/zram0/disksize 2>/dev/null || \
-      log "WARN: تعذر تعيين حجم zram0"
-  fi
-
-  if [ -x /sbin/mkswap ]; then
-    mkswap "$ZRAM_DEV" 2>/dev/null || log "WARN: تعذر تهيئة zram0 ك-swap"
-  fi
-
-  if [ -x /sbin/swapon ]; then
-    swapon "$ZRAM_DEV" -p 100 2>/dev/null || log "WARN: تعذر تفعيل swap على zram0"
-    log "تم تفعيل zRAM swap (الحجم: $ZRAM_SIZE) — لا كتابات على الهارد SMR"
-  fi
-
-  if [ -f /proc/swaps ]; then
-    grep -v zram /proc/swaps 2>/dev/null | awk 'NR>1 {print $1}' | while read swapdev; do
-      [ -n "$swapdev" ] && swapoff "$swapdev" 2>/dev/null && log "تم تعطيل swap على $swapdev (حماية SMR)"
-    done
-  fi
+  echo "[zram] initializing 256 MiB RAM-backed swap"
+  [ -b "$ZRAM_DEV" ] || { echo "[zram] ERROR: $ZRAM_DEV absent; CONFIG_ZRAM must be built in"; return 1; }
+  [ -w /sys/block/zram0/disksize ] || { echo "[zram] ERROR: disksize sysfs node unavailable"; return 1; }
+  echo 1 > /sys/block/zram0/reset 2>/dev/null || true
+  echo "$ZRAM_SIZE_BYTES" > /sys/block/zram0/disksize || return 1
+  command -v mkswap >/dev/null 2>&1 || { echo "[zram] ERROR: mkswap missing"; return 1; }
+  command -v swapon >/dev/null 2>&1 || { echo "[zram] ERROR: swapon missing"; return 1; }
+  mkswap "$ZRAM_DEV" >/dev/null || return 1
+  swapon "$ZRAM_DEV" || return 1
+  if grep -q "^$ZRAM_DEV " /proc/swaps; then echo "[zram] active: 256 MiB"; return 0; fi
+  echo "[zram] ERROR: swapon did not register the device"
+  return 1
 }
-
 stop_zram() {
-  log "إيقاف zRAM…"
   swapoff "$ZRAM_DEV" 2>/dev/null || true
-  modprobe -r zram 2>/dev/null || true
+  echo 1 > /sys/block/zram0/reset 2>/dev/null || true
 }
-
-status_zram() {
-  if [ -b "$ZRAM_DEV" ]; then
-    echo "zram0 موجود"
-    swapon --show 2>/dev/null | grep zram || echo "zram swap غير نشط"
-  else
-    echo "zram0 غير موجود"
-  fi
-}
-
 case "$1" in
   start) start_zram ;;
-  stop)  stop_zram ;;
-  restart) stop_zram; sleep 1; start_zram ;;
-  status) status_zram ;;
+  stop) stop_zram ;;
+  restart) stop_zram; start_zram ;;
+  status) grep -E '^Filename|zram' /proc/swaps 2>/dev/null || echo "zRAM inactive" ;;
   *) echo "Usage: $0 {start|stop|restart|status}"; exit 1 ;;
 esac
-exit 0

@@ -1,76 +1,48 @@
-# سديم OS (Sadim OS) — نظام تشغيل مخصص يُبنى من المصدر لجهاز محدد
+# Sadim OS (سديم)
 
-> نظام تشغيل جديد يُبنى خصيصاً لجهاز Acer Aspire E5-576G (i5-7200U، 4GB RAM، قرص HDD SMR)،
-> بمنهجية هندسية موثقة، وبصدق كامل بشأن ما يُبنى فعلياً وما يُعاد استخدامه.
-> **الاسم الرسمي: Sadim OS (سديم).** المستودع الرسمي على GitHub: **https://github.com/omar-priv/omaros1** (Private).
+Sadim OS is a source-built, x86_64 Live Linux system under development for an Acer Aspire E5-576G (i5-7200U, 4 GB RAM). It is built from a custom Linux kernel configuration, BusyBox initramfs and a Buildroot userland. It is not a kernel written from scratch and is not ready to replace Windows.
 
-## بيان الصدق (مطلب إلزامي من ميثاق المشروع)
+## Honest current status — 12 November 2026
 
-سديم **ليس توزيعة جاهزة معاد تلوينها**، و**ليس نواة مكتوبة من الصفر**. القرار المعماري المعتمد (ADR-001):
+The active ISO job #9 was started from commit f1dc985 before the latest review fixes. It is an older snapshot and must not be treated as the reviewed image.
 
-- **نواة النظام:** Linux mainline — تُعاد استخدامه (رخصة GPLv2) وتُبنى من المصدر بتكوين مخصص للجهاز.
-  السبب: عتاد هذا الجهاز تحديداً (Wi-Fi QCA9377، رسوميات Intel HD 620، الطاقة) يتطلب تعريفات
-  نضجت عبر 15+ سنة؛ بناؤها من الصفر يعني نظاماً لا يعمل على الجهاز الحقيقي لسنوات.
-- **أساس userland:** musl libc + BusyBox كأساس صغير، يُبنى من المصدر.
-- **ما يُبنى بالكامل داخل هذا المشروع:**
-  نظام البناء القابل للتكرار (Buildroot-based)، تهيئة النواة لهذا الجهاز، initramfs وinit،
-  تصميم الخدمات، بيئة سطح المكتب المخصصة (المرحلة 5)، التدويل العربي RTL،
-  مدير الحزم والتحديثات، طبقات الاختبار، وكل التوثيق.
+The repository now contains a safer Live boot path, corrected Buildroot symbols, a real Weston startup check, built-in zRAM configuration and updated documentation. Those changes still require a fresh successful build and a real USB boot test. There is currently no reviewed ISO download.
 
-التفصيل الكامل والبدائل المرفوضة: [`docs/adr/ADR-001-architecture.md`](docs/adr/ADR-001-architecture.md)
-و[`docs/research/architecture-options.md`](docs/research/architecture-options.md).
+- Repository: https://github.com/omar-priv/omaros1
+- Active older build: https://github.com/omar-priv/omaros1/actions/runs/43147836495
+- Build policy: ISO workflow is manual-only while the retained job finishes; a new build must be started explicitly after review.
 
-## الجهاز المستهدف (نتائج اكتشاف موثقة)
+## What the current base aims to provide
 
-| المكوّن | التفاصيل | مصدر المعلومة |
-|---|---|---|
-| الإقلاع | **Legacy BIOS (وليس UEFI)** + قرص **MBR** | قياس فعلي 2026-11-11 |
-| المعالج | Intel i5-7200U (2 أنوية / 4 خيوط، Kaby Lake) | تقرير المستخدم |
-| الذاكرة | 4GB DDR3L-1600 (شريحة واحدة — Single Channel) | تقرير المستخدم |
-| القرص | WD10SPZX 1TB HDD — **تقنية SMR** (كتابة بطيئة عند الضغط) | تقرير المستخدم + مصدر WD الرسمي |
-| رسوميات | Intel HD 620 (أساس) + NVIDIA MX130 2GB (Optimus) | قياس فعلي (VRAM من السجل) |
-| Wi-Fi | Qualcomm Atheros QCA9377 — مدعوم في Linux ath10k | بحث موثق |
-| Ethernet | Realtek PCIe GbE (r8169 في Linux) | تقرير المستخدم |
-| الصوت | Realtek HD Audio + Intel Display Audio | قياس فعلي |
-| البطارية | صحة ≈ **60%** (24,572 من 40,880 mWh) | قياس فعلي (تقرير الطاقة) |
-| الشاشة | 1366×768 | تقرير المستخدم |
+- Legacy BIOS hybrid ISO for USB Live use.
+- Linux kernel with Intel graphics, USB storage, common input, network, audio and ACPI options built in.
+- Read-only SquashFS system with a RAM-backed OverlayFS upper layer.
+- Weston DRM compositor using the desktop shell and pixman renderer.
+- BusyBox init and small system services.
+- Diagnostic and terminal utility prototypes.
 
-التفاصيل الكاملة: [`docs/research/hardware-discovery.md`](docs/research/hardware-discovery.md)
+## What is not complete
 
-## الأهداف الهندسية القابلة للقياس
+- The custom Windows-like Sadim desktop, taskbar and graphical Start menu are not implemented. The former taskbar and app scripts are terminal prototypes and are no longer launched as if they were GUI applications.
+- The existing file manager, notes, calculator, settings and task-manager scripts are not native graphical apps.
+- Chromium and Wine are not included in the reviewed base. Brave auto-download is disabled until a pinned, integrity-checked package is available.
+- Wi-Fi, audio, touchpad, display, battery, zRAM and application compatibility have not been verified on the actual Acer hardware.
+- Performance targets (idle RAM, boot time and disk I/O) have not been measured on the laptop.
 
-أهداف معلنة (ليست ضمانات) — تُقاس فعلياً قبل إعلان نجاحها:
+## Safety model
 
-- استهلاك الذاكرة عند الخمول بعد الإقلاع: هدف ≤ 1GB، هدف طموح ≈ 600MB.
-- إقلاع سريع من USB/VM — يُقاس بالثواني لاحقاً في كل إصدار.
-- صفر كتابات عشوائية مستمرة على القرص SMR (zRAM بدل swap على القرص افتراضياً).
-- عربية RTL + إنجليزية LTR مع تبديل Alt+Shift.
+The intended release is Live-only. The boot init scans candidate devices and attempts read-only mounts to locate the ISO/SquashFS. It does not partition, format, install to, or mount an internal disk read-write. The writable system layer is tmpfs in RAM and is lost after shutdown. Do not use any installer or partitioning tool; none is part of this project.
 
-## قواعد الأمان (غير قابلة للتفاوض)
+The USB writer will erase the selected USB stick. Use an empty spare stick and verify its drive letter/device carefully.
 
-- **Windows وملفات المستخدم وأقسام القرص الداخلي تبقى سليمة دائماً.**
-- لا فرمتة، لا حذف أقسام، لا تعديل EFI/Bootloader، لا تثبيت على القرص الداخلي.
-- الإصدارات الأولى: إقلاع داخل QEMU/VM فقط، ثم USB Live بموافقة صريحة.
-- أي تثبيت مستقبلي: نسخ احتياطي + خطة استعادة + موافقة صريحة مسبقة.
+## Build and test policy
 
-## الحالة الحالية والخطوة التالية
+1. sadim-ci runs static YAML and shell-syntax checks.
+2. The separate ISO workflow builds the kernel, initramfs, Buildroot rootfs and hybrid ISO, then verifies the ISO contents and checksum.
+3. The owner explicitly tests the resulting USB Live image on the Acer. No QEMU test is part of the current acceptance path.
 
-| المرحلة | الحالة |
-|---|---|
-| 0 — فحص البيئة والأدوات | ✅ مكتملة 2026-11-11 |
-| 1 — Research واكتشاف العتاد | ✅ مكتملة 2026-11-11 |
-| 2 — Kernel + Initramfs + QEMU (بناء من المصدر + إقلاع آلي في CI) | ✅ منجزة — `SADIM-BOOT-OK` ×3 (CI run #5) |
-| 3 — rootfs + مستخدمون + صلاحيات + خدمات | ✅ كود مكتمل — CI يعمل (العلامات الست ×3) |
-| 4 — سطح المكتب المخصص (Wayland/weston + seatd) | ✅ كود مكتمل — CI يعمل (العلامات السبعة ×3 + QMP screendump) |
-| 5 — التطبيقات الأساسية (Qt6 linuxfb + RTL) | ✅ كود مكتمل — CI يعمل (جزء من Buildroot rootfs) |
-| 6 — العتاد والتعريفات على الجهاز الحقيقي | ✅ كود مكتمل — Wi-Fi (ath10k/firmware-5.bin)، صوت (snd-hda)، طاقة/بطارية، USB 2.0، لمس |
-| 7 — الأداء والأمان | ✅ كود مكتمل — zRAM swap (بديل SMR)، noatime، tmpfs، مراقبة تلقائية، laptop_mode |
-| 8 — الإصدار اليومي (ISO v0.2-daily) | ✅ كود مكتمل — CI يعمل — ISO هجينة BIOS+USB 2.0 مع جميع المراحل |
-| 9 — واجهة Windows 10-like للاستخدام اليومي | ✅ كود مكتمل — CI يعمل — Taskbar + Start Menu + File Explorer + Notepad + Calculator + Task Manager + سمة Windows 10 |
-| 10 — تعريفات تلقائية + Brave + Wine | ✅ كود مكتمل — CI يعمل — تحميل تعريفات تلقائياً + متصفح Brave (مع SHA256) + دعم تطبيقات .exe عبر Wine |
-| 11 — واجهة Windows 10-like كاملة (المتكاملة) | ✅ كود مكتمل — CI يعمل — ملفات، مفكرة، حاسبة، مدير مهام، إعدادات، محطة أوامر، متصفح + سطح مكتب مع أيقونات |
-| 12 — الأمان والميزات المتكاملة | ✅ كود مكتمل — CI يعمل — sudo للإدارة، sadim uid 1000 (مستخدم عادي)، مدير حزم، تحديث نظام، مراقبة قرص SMR، Wi-Fi، طاقة/بطارية |
-| 13 — إصلاحات أمنية وتوثيق نهائي | ✅ كود مكتمل — CI يعمل — تصحيح uid sadim إلى 1000، sudoers للإدارة، شاشة قفل، بحث النظام، إعدادات شبكة، معلومات نظام، مساعدة نظام |
+An artifact is publishable only when its workflow is completed successfully and contains sadim.iso, sadim.iso.sha256 and BUILD-REPORT.txt. CI success is not proof of hardware compatibility.
 
-طريق الإنجاز الحالي: البناء والاختبارات الآلية عبر **GitHub Actions + QEMU** (المضيف ضعيف الموارد
-— 4GB RAM — ولن يُثبَّت عليه النظام ولا يُستخدم لبناء ثقيل محلياً قبل تدقيق الموارد).
+## License and reuse
+
+The project reuses upstream Linux, BusyBox, Buildroot, Weston and other open-source components under their respective licenses. Custom project scripts and configuration are maintained in this repository. See docs/adr/ for architectural decisions and docs/known-issues.md for limitations.

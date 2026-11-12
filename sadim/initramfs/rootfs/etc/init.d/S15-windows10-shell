@@ -1,79 +1,9 @@
 #!/bin/sh
-# Sadim OS — Windows 10 Shell Launcher (مثل Windows Startup)
-# يبدأ واجهة Windows 10-like عند الإقلاع: Weston + Taskbar + التطبيقات الأساسية
-# يعمل بعد seatd و Weston — لاستخدام يومي للمبتدئ
-# ⚠️ أمان: يتم التشغيل كمستخدم sadim (uid 1000)، وليس root
-
-set -u
-
-PIDFILE_TASKBAR=/var/run/sadim-taskbar.pid
-LOG_FILE=/var/log/sadim-shell.log
-
-log() { echo "[win10-shell] $*" | tee -a "$LOG_FILE" 2>/dev/null || echo "[win10-shell] $*"; }
-
-start_shell() {
-  log "بدء واجهة Windows 10-like لنظام سديم OS…"
-
-  if [ -x /etc/sadim/windows10-tweaks.sh ]; then
-    /etc/sadim/windows10-tweaks.sh start
-  fi
-
-  log "انتظار bereit Weston compositor…"
-  for i in $(seq 1 30); do
-    if [ -S /run/user/0/wayland-0 ] || [ -S /run/user/1000/wayland-0 ]; then
-      log "Weston جاهز"
-      break
-    fi
-    sleep 0.5
-  done
-
-  if [ -x /usr/bin/sadim-taskbar ]; then
-    log "تشغيل شريط المهام (Taskbar)…"
-    /usr/bin/sadim-taskbar &
-    TASKBAR_PID=$!
-    echo "$TASKBAR_PID" > "$PIDFILE_TASKBAR"
-    sleep 1
-    if kill -0 "$TASKBAR_PID" 2>/dev/null; then
-      log "تم تشغيل شريط المهام (PID: $TASKBAR_PID)"
-    else
-      log "WARN: شريط المهام لم يبدأ بنجاح"
-      rm -f "$PIDFILE_TASKBAR"
-    fi
-  else
-    log "WARN: sadim-taskbar غير موجود — شريط المهام غير متاح"
-  fi
-
-  if [ -x /usr/bin/sadim-start-menu ]; then
-    log "قائمة ابدأ (Start Menu) جاهزة للفتح عبر شريط المهام"
-  else
-    log "WARN: sadim-start-menu غير موجود — قائمة ابدأ غير متاحة"
-  fi
-
-  log "تم بدء واجهة Windows 10-like بنجاح"
-  echo "SADIM-SHELL-OK"
-}
-
-stop_shell() {
-  log "إيقاف واجهة Windows 10-like…"
-  if [ -f "$PIDFILE_TASKBAR" ]; then
-    kill "$(cat "$PIDFILE_TASKBAR")" 2>/dev/null || true
-    rm -f "$PIDFILE_TASKBAR"
-  fi
-  killall sadim-taskbar 2>/dev/null || true
-  log "تم إيقاف الواجهة"
-}
-
+# Deprecated: the former taskbar/start-menu programs are terminal prototypes,
+# not Wayland clients. Do not launch them in the background and call them a GUI.
 case "$1" in
-  start) start_shell ;;
-  stop)  stop_shell ;;
-  restart) stop_shell; sleep 1; start_shell ;;
-  status)
-    if [ -f "$PIDFILE_TASKBAR" ] && kill -0 "$(cat "$PIDFILE_TASKBAR")" 2>/dev/null; then
-      echo "واجهة Windows 10-like: نشطة (Taskbar PID: $(cat "$PIDFILE_TASKBAR"))"
-    else
-      echo "واجهة Windows 10-like: غير نشطة"
-    fi
-    ;;
+  start) echo "[desktop] legacy terminal mock disabled; Weston desktop shell is used" ;;
+  stop|restart|status) echo "[desktop] no legacy GUI process is running" ;;
   *) echo "Usage: $0 {start|stop|restart|status}"; exit 1 ;;
 esac
 exit 0

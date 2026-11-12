@@ -1,112 +1,26 @@
 #!/bin/sh
-# Sadim OS — تحميل جميع التعريفات تلقائياً عند الإقلاع (مرحلة 6+)
-# يُحمل جميع تعريفات العتاد الحقيقي تلقائياً بدون تدخل المستخدم
-# Acer E5-576G: Wi-Fi، صوت، بطارية، USB، لمس، شاشة، إيثرنت
-
+# Hardware drivers are built into this kernel (CONFIG_*=y), not modules.
+# Report what the running kernel actually exposes; never claim all devices exist.
 set -u
-
 log() { echo "[drivers] $*"; }
-
-is_runtime_ready() {
-  if [ ! -d /proc ] || [ ! -d /sys ]; then
-    return 1
-  fi
-  if ! command -v modprobe >/dev/null 2>&1; then
-    return 1
-  fi
-  return 0
-}
-
-load_driver() {
-  local drv="$1"
-
-  if ! is_runtime_ready; then
-    log "INFO: النظام غير جاهز لتحميل التعريفات (قد يكون في initramfs) — تخطي $drv"
-    return 0
-  fi
-
-  if [ ! -f "/lib/modules/$(uname -r 2>/dev/null)/kernel/$drv.ko" ] 2>/dev/null && \
-     [ ! -f "/lib/modules/$(uname -r 2>/dev/null)/kernel/drivers/*/$drv.ko" ] 2>/dev/null; then
-    log "INFO: تعريف $drv غير موجود في النواة (قد يكون مدمجاً أو غير مطلوب)"
-    return 0
-  fi
-
-  if modprobe "$drv" 2>/dev/null; then
-    log "تم تحميل تعريف: $drv"
-  else
-    log "WARN: تعذر تحميل تعريف: $drv (قد لا يكون مطلوباً لهذا العتاد)"
-  fi
-}
-
 start_drivers() {
-  log "بدء تحميل جميع تعريفات العتاد تلقائياً…"
-
-  if ! is_runtime_ready; then
-    log "WARN: النظام غير جاهز لتحميل التعريفات في هذه المرحلة — سيتم تحميلها بعد switch_root"
-    return 0
-  fi
-
-  # تعريفات الشاشة والعرض
-  load_driver i915           # Intel HD 620
-  load_driver drm_kms_helper
-  load_driver fbcon
-
-  # تعريفات الشبكة
-  load_driver r8169          # Realtek Ethernet
-  load_driver ath10k_pci     # Wi-Fi QCA9377
-  load_driver mac80211
-  load_driver cfg80211
-
-  # تعريفات الصوت
-  load_driver snd-hda-intel
-  load_driver snd-hda-codec-realtek
-  load_driver snd-hda-codec-hdmi
-
-  # تعريفات الطاقة والبطارية
-  load_driver battery
-  load_driver ac
-  load_driver acpi_battery
-  load_driver thermal
-  load_driver hwmon
-
-  # تعريفات USB 2.0 (للفلاشة والأجهزة الخارجية)
-  load_driver usb-storage
-  load_driver uas
-  load_driver ohci-hcd
-  load_driver ehci-hcd
-  load_driver xhci-hcd
-
-  # تعريفات لمس اللوحة واللوحة المفاتيح
-  load_driver psmouse
-  load_driver synaptics
-  load_driver elantech
-  load_driver atkbd
-  load_driver i8042
-
-  # تعريفات أنظمة الملفات (دعم قراءة أقسام Windows NTFS/FAT)
-  load_driver ntfs
-  load_driver fat
-  load_driver vfat
-
-  # تعريفات التشفير والأمان
-  load_driver aes
-  load_driver sha256
-  load_driver hmac
-
-  log "تم الانتهاء من تحميل جميع التعريفات المتاحة"
+  log "checking built-in driver support and detected devices"
+  for item in \
+    "Intel graphics:/sys/bus/pci/drivers/i915" \
+    "Realtek Ethernet:/sys/bus/pci/drivers/r8169" \
+    "Qualcomm Wi-Fi:/sys/bus/pci/drivers/ath10k_pci" \
+    "HDA audio:/sys/bus/pci/drivers/snd_hda_intel"; do
+    label=\${item%%:*}
+    path=\${item#*:}
+    if [ -d "$path" ]; then log "$label driver registered"; else log "$label driver not registered/detected"; fi
+  done
+  [ -d /sys/class/power_supply ] && log "power-supply class available"
+  [ -d /sys/class/thermal ] && log "thermal class available"
+  [ -d /sys/bus/usb/devices ] && log "USB device bus available"
 }
-
-stop_drivers() {
-  log "التعريفات لا تحتاج إيقاف (تدخل واحد عند الإقلاع)"
-}
-
 case "$1" in
   start) start_drivers ;;
-  stop)  stop_drivers ;;
-  restart) stop_drivers; sleep 1; start_drivers ;;
-  status)
-    lsmod 2>/dev/null | head -30 || echo "لا يمكن عرض تعريفات النواة"
-    ;;
+  stop|restart) echo "[drivers] kernel built-in drivers need no service stop/reload" ;;
+  status) start_drivers ;;
   *) echo "Usage: $0 {start|stop|restart|status}"; exit 1 ;;
 esac
-exit 0

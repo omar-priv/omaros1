@@ -1,49 +1,26 @@
 #!/bin/sh
-# Sadim OS — خدمة الطاقة والبطارية (مرحلة 6)
+# Read ACPI power/thermal information without attempting to modprobe built-ins.
 set -u
-
-log() { echo "[power] $*"; }
-
-start_power() {
-  log "بدء مراقبة الطاقة والبطارية…"
-
-  modprobe battery 2>/dev/null || log "WARN: تعذر تحميل battery"
-  modprobe ac 2>/dev/null || log "WARN: تعذر تحميل ac"
-  modprobe acpi_battery 2>/dev/null || log "WARN: تعذر تحميل acpi_battery"
-  modprobe thermal 2>/dev/null || log "WARN: تعذر تحميل thermal"
-  modprobe hwmon 2>/dev/null || log "WARN: تعذر تحميل hwmon"
-
-  if [ -d /sys/class/power_supply ]; then
-    for bat in /sys/class/power_supply/BAT*; do
-      [ -d "$bat" ] || continue
-      name=$(basename "$bat")
-      capacity=$(cat "$bat/capacity" 2>/dev/null || echo "N/A")
-      status=$(cat "$bat/status" 2>/dev/null || echo "N/A")
-      log "البطارية $name: $capacity% ($status)"
-    done
-  else
-    log "لا توجد بطارية مكتشفة (قد يكون نظام ثابتاً)"
-  fi
-
-  log "تفعيل وضع توفير الطاقة للقرص الميكانيكي SMR"
+show_power() {
+  found=0
+  for bat in /sys/class/power_supply/BAT*; do
+    [ -d "$bat" ] || continue
+    found=1
+    name=$(basename "$bat")
+    capacity=$(cat "$bat/capacity" 2>/dev/null || echo "N/A")
+    status=$(cat "$bat/status" 2>/dev/null || echo "N/A")
+    echo "[power] $name: $capacity% ($status)"
+  done
+  [ "$found" -eq 1 ] || echo "[power] no battery device exposed by firmware/kernel"
+  for zone in /sys/class/thermal/thermal_zone*; do
+    [ -r "$zone/temp" ] || continue
+    raw=$(cat "$zone/temp" 2>/dev/null || echo "")
+    case "$raw" in *[!0-9]*|"") continue ;; esac
+    echo "[power] $(basename "$zone"): $((raw / 1000)) C"
+  done
 }
-
-stop_power() {
-  log "إيقاف مراقبة الطاقة…"
-}
-
 case "$1" in
-  start) start_power ;;
-  stop)  stop_power ;;
-  restart) stop_power; sleep 1; start_power ;;
-  status)
-    if [ -d /sys/class/power_supply ]; then
-      for bat in /sys/class/power_supply/BAT*; do
-        [ -d "$bat" ] || continue
-        echo "$(basename "$bat"): $(cat "$bat/capacity" 2>/dev/null)% $(cat "$bat/status" 2>/dev/null)"
-      done
-    fi
-    ;;
+  start|status) show_power ;;
+  stop|restart) echo "[power] read-only status service; nothing to stop" ;;
   *) echo "Usage: $0 {start|stop|restart|status}"; exit 1 ;;
 esac
-exit 0

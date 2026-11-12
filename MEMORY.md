@@ -1,4 +1,5 @@
-# MEMORY.md — فهرس ذاكرة المشاريع
-- `handoff-sadeem-os.md` — **النشط:** بناء **Sadim OS (سديم)** لجهاز Acer E5-576G؛ Phase 0-1 ✅، **المستودع omar-priv/omaros1 منشأ ومرفوع (main)، CI lint أخضر، بناء النواة+إقلاع QEMU قيد المتابعة — بوابة SADIM-BOOT-OK** (2026-11-11).
-- `handoff-opencode-telegram-bridge.md` — بناء بوت تليغرام↔OpenCode على Desktop؛ الحالة الحية والخطوة القادمة مذكوّنة داخله (قيد التنفيذ الآن 2026-10-22).
-- `handoff-gmail-organizer.md` — ربط OpenCode ببريد Gmail عبر MCP وبناء مهارة متخصصة في تنظيم الوارد (قيد التنفيذ الآن 2026-10-24).
+# MEMORY.md — Project handoff index
+
+- handoff-sadeem-os.md — active: Sadim OS in omar-priv/omaros1. Run #9 (commit f1dc985) is an older independent ISO build and must finish without cancellation. The ISO workflow is manual-only and concurrency no longer cancels an active run. Latest review changes correct Live medium discovery, Weston startup/config, Buildroot symbols, zRAM, unsafe Brave download and misleading status claims. A fresh reviewed ISO build is still required; no reviewed download artifact yet.
+- handoff-opencode-telegram-bridge.md — OpenCode ↔ Telegram bridge project notes.
+- handoff-gmail-organizer.md — Gmail organizer project notes.

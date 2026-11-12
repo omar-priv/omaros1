@@ -1,60 +1,16 @@
 #!/bin/sh
-# Sadim OS — تحسين الهارد الميكانيكي SMR (مرحلة 7)
-# يُلغِي書き込м العشوائية على القرص SMR، يضبط noatime، writeback، ويقلل المزامنة
-# الهدف: حل بطئ الهارد الميكانيكي WD10SPZX 1TB SMR
-set -u
-
-log() { echo "[smr] $*"; }
-
-optimize_smr() {
-  log "بدء تحسين الهارد SMR…"
-
-  mount -o remount,noatime,nodiratime / 2>/dev/null && \
-    log "تم تفعيل noatime/nodiratime على الجذر" || \
-    log "WARN: تعذر إعادة mounting الجذر مع noatime"
-
-  if [ -b /dev/sda ] && [ "${SADIM_SMR_PROTECT_STRICT:-0}" = "1" ]; then
-    log "تفعيل حماية SMR الصارمة (تعطيل write cache على /dev/sda)…"
-    hdparm -W 0 /dev/sda 2>/dev/null && \
-      log "تم تعطيل write cache على /dev/sda (حماية SMR)" || \
-      log "WARN: تعذر ضبط hdparm على /dev/sda"
-  else
-    log "INFO: حماية SMR العادية مفعّلة (noatime + tmpfs + zRAM) — write cache مفعّل للأداء"
-  fi
-
-  echo 10 > /proc/sys/vm/dirty_ratio 2>/dev/null || true
-  echo 5 > /proc/sys/vm/dirty_background_ratio 2>/dev/null || true
-  echo 500 > /proc/sys/vm/dirty_expire_centisecs 2>/dev/null || true
-  echo 1000 > /proc/sys/vm/dirty_writeback_centisecs 2>/dev/null || true
-  log "تم ضبط معايير vm لتقليل書き込م على القرص SMR"
-
-  echo 30 > /proc/sys/vm/laptop_mode 2>/dev/null || true
-  log "تم تفعيل laptop_mode (تقليل مزامنة القرص)"
-
-  if [ -x /sbin/hdparm ]; then
-    log "معلومات القرص:"
-    hdparm -I /dev/sda 2>/dev/null | grep -E 'Model|Sector|Rotation|Trim' | head -5 || true
-  fi
-
-  log "تحسين SMR مكتمل — الكتابع الميكانيكي محمي الآن"
-}
-
-status_smr() {
-  echo "=== حالة تحسينات SMR ==="
-  echo "mount options للجذر:"
-  mount | grep ' / ' | head -1
-  echo "معايير vm:"
-  [ -r /proc/sys/vm/dirty_ratio ] && echo "dirty_ratio: $(cat /proc/sys/vm/dirty_ratio)"
-  [ -r /proc/sys/vm/laptop_mode ] && echo "laptop_mode: $(cat /proc/sys/vm/laptop_mode)"
-  echo "أجهزة القرص:"
-  lsblk 2>/dev/null | grep -E 'sda|nvme|mmc' | head -5 || true
-}
-
+# Live-mode safety: never identify /dev/sda as an internal HDD or alter its
+# write-cache settings. The Live root is read-only SquashFS plus tmpfs overlay.
 case "$1" in
-  start) optimize_smr ;;
-  stop)  log "تحسينات SMR لا تحتاج إيقاف (تدخل واحد عند الإقلاع)" ;;
-  restart) optimize_smr ;;
-  status) status_smr ;;
+  start)
+    echo "[storage] Live root is SquashFS + tmpfs overlay"
+    echo "[storage] no internal disk is mounted or modified automatically"
+    mount | grep ' on / ' || true
+    ;;
+  stop|restart) echo "[storage] read-only safety status; no disk tuning applied" ;;
+  status)
+    echo "=== block devices (information only) ==="
+    cat /proc/partitions 2>/dev/null || true
+    ;;
   *) echo "Usage: $0 {start|stop|restart|status}"; exit 1 ;;
 esac
-exit 0

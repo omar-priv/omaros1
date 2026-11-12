@@ -1,50 +1,34 @@
-# دليل التجربة من الفلاشة — Sadim OS 0.1-live (BIOS)
+# Sadim OS — Live USB trial guide
 
-> ⚠️ **قراءة السلامة أولاً:** هذه نسخة **Live فقط** — تعمل كلياً من الذاكرة (RAM) ولا تلمس
-> القرص الداخلي إطلاقاً (لا تثبيت، لا كتابة، لا تغيير إقلاع). الـ dual boot قرار لاحق منفصل
-> يحتاج موافقتك وخطة نسخ احتياطي — لن يحدث تلقائياً.
+**Status: not yet ready to flash.** The active ISO Run #9 is an older snapshot from commit f1dc985. It started before the latest boot, zRAM, Weston and Buildroot fixes. Do not use it as the reviewed build.
 
-## ما تحتاجه
+When a new reviewed artifact appears, use these steps:
 
-1. ملف `sadim-0.1-live-bios.iso` من **الإصدار الرسمي**:
-   **https://github.com/omar-priv/omaros1/releases/download/v0.1.0-live/sadim-0.1-live-bios.iso**
-2. فلاشة USB (سعة 1GB فأكثر — سيُمحى محتواها بالكامل! اختر فلاشة لا تحمل بيانات مهمة).
-3. جهاز بوضع Legacy BIOS (جهازك Acer E5-576G يقلع Legacy + MBR فعلاً — قياس موثق).
+## Before flashing
 
-## الخطوات (على Windows)
+1. Download sadim.iso, sadim.iso.sha256 and BUILD-REPORT.txt from the successful reviewed GitHub Actions artifact.
+2. Verify the ISO checksum on Windows PowerShell with: Get-FileHash .\sadim.iso -Algorithm SHA256
+3. Compare the displayed hash with the value in sadim.iso.sha256.
+4. Use an empty USB stick. Writing the image erases that USB stick.
 
-### 1) كتابة الفلاشة — اختر إحدى الأداتين
-- **Rufus** (الأشهر): حدد جهاز USB → select ملف ISO → **Boot selection: DISK or ISO image** →
-  **مهم: في «Partition scheme» اختر MBR وفي Target system: BIOS (or UEFI-CSM)** → START →
-  إذا سألك: **اختر «Write in DD Image mode»** → OK.
-- أو **balenaEtcher**: حدد ISO → حدد الفلاشة → Flash. (أسهل وأقل خيارات — موصى به إذا لم تتعامل مع Rufus).
+## Write the USB
 
-### 2) الإقلاع على الـ Acer
-1. أعد التشغيل واضغط **F12** متكرراً (قائمة الإقلاع).
-2. اختر الفلاشة (USB HDD / اسم الفلاشة).
-3. إن لم تظهر: ادخل BIOS بـ **F2** → تأكد أن **Boot Mode = Legacy** (جهازك هكذا أصلاً) → F12 مجدداً.
+Use Rufus or balenaEtcher. In Rufus select the USB device, choose sadim.iso, select MBR / BIOS (or UEFI-CSM) where offered, then choose DD Image mode if Rufus asks. Double-check the selected USB drive letter and capacity before confirming.
 
-## ما ستشاهده (التوقعات الصادقة)
+## Boot the Acer
 
-1. سطور إقلاع (kernel log) — طبيعية.
-2. **شعار سديم**: `Sadim OS (سديم) — live boot v0.2` + إصدار النواة + الذاكرة.
-3. **وسم `SADIM-BOOT-OK`** — يعني: وصل النظام إلى init بلا Kernel Panic.
-4. **شاشة دخول تلقائية** على الكونسول (مستخدم root تلقائياً — راحة Live فقط).
-5. قياسات أولية: `free -m` (الذاكرة)، `uname -a`، `ls /` — جرّب لوحة المفاتيح المدمجة.
+1. Keep the laptop's internal drive untouched.
+2. Insert the USB and power on.
+3. Open the boot menu with F12 and select the USB device.
+4. Select the normal Sadim Live option. The safe option disables ACPI/APIC for troubleshooting.
+5. Do not select any installer or partitioning program. This project has no installer.
 
-## ما هو **غير متوفر** في v0.1 (بصدق)
+## What is expected at this stage
 
-- ❌ واجهة رسومية (تأتي في المرحلة 4-5) — الكونسول فقط.
-- ❌ Wi-Fi (تعريف ath10k + firmware في الإصدار القادم) — الإيثرنت السلكي مضمّن لكن **غير مُختبَر على جهازك بعد**.
-- ❌ عرض العربية في الكونسول النصي (بصناديق/رموز) — تشكيل العربية الحقيقي في الواجهة الرسومية (Phase 4).
-- ❌ ثبات البيانات: كل ما تكتبه يختفي مع إعادة التشغيل (RAM فقط).
+The initial target is a Live system with a Weston desktop shell. The custom Windows-like desktop and graphical app suite are not finished. The command-line utilities are prototypes and may require a terminal. Network, sound, touchpad and battery indicators still require real-hardware verification.
 
-## الإغلاق الآمن
+## Safety and shutdown
 
-- اكتب الأمر: `poweroff` — النظام سيغلق وينطفئ (بلا لمس لقرصك).
-- أو اضغط زر الطاقة لحظياً إذا تعطّل الأمر.
+The intended system is read-only SquashFS plus a temporary RAM overlay. Internal disks must not be mounted read-write or modified. If you see a partitioning/format prompt, stop and power off.
 
-## أبلغني بنتيجة التجربة
-
-- هل وصلت إلى شاشة الدخول؟ الكيبورد المدمج يعمل؟ هل ظهر أي Kernel Panic أو تجمّد؟
-- سجل أي ملاحظة — سيدخل في سجل اختبارات العتاد (docs) مباشرة.
+Use poweroff from a console to shut down. Report boot errors, a blank display, a missing Wayland socket or hardware that does not appear.

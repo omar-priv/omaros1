@@ -1,58 +1,38 @@
-# ADR-001: المعمارية الأساسية لسديم OS
+# ADR-001: Sadim OS architecture
 
-- **الحالة:** مقبول (Accepted) — 2026-11-11
-- **القرار:** سديم = **نظام تشغيل مخصص يُبنى من المصدر فوق نواة Linux mainline**، مع userland
-  مخصص خفيف، وسطح مكتب مخصص، وتدويل عربي كامل، ونظام بناء قابل للتكرار عبر CI.
-- **سياق القرار:** جهاز حقيقي محدد (Legacy+MBR، SMR HDD، 4GB DDR3L، Optimus، QCA9377)،
-  وأهداف استخدام تشمل متصفحاً حديثاً وPython/Node/Git وعربية RTL، وقاعدة أمان: لا مساس
-  بـ Windows أو القرص الداخلي إطلاقاً.
+- Status: Accepted — 12 November 2026
+- Decision: Sadim is a source-built x86_64 Live Linux system using an upstream Linux kernel, a custom configuration/initramfs, Buildroot userland and Weston as the first compositor.
+- Target: Acer Aspire E5-576G (i5-7200U, 4 GB RAM, Legacy BIOS).
+- Safety invariant: the release is Live-only; it does not install or write to the internal Windows disk.
 
-## 1. ما أُعيد استخدامه (بصدق كامل — رخصه موثقة عند الدمج الفعلي)
+## Reused components
 
-| المكون | الترخيص | السبب |
-|---|---|---|
-| Linux kernel (mainline LTS) | GPLv2 | سائق QCA9377 (ath10k) + i915 + r8169 + ACPI/طاقة + USB ناضجة؛ البدائل أثبتت فشلها لهذا العتاد (docs/research/architecture-options.md) |
-| linux-firmware (ath10k QCA9377) | رخص خاص بالمصنع | لا طريقة أخرى لتشغيل الكارت (Firmware مخفي في الجهاز نفسه) |
-| musl libc، BusyBox | MIT/GPL | أساس userland صغير |
-| Buildroot | GPLv2+ | نظام بناء مصدري قابل للتكرار (ليس توزيعة جاهزة — يبني من المصدر) |
-| مكتبات GUI مختارة (ADR-002) | حسب الاختيار | شرطها: دعم HarfBuzz/Fribidi للعربية |
+| Component | Role |
+|---|---|
+| Linux mainline kernel | Hardware support and process/memory/filesystem primitives |
+| BusyBox | Initramfs utilities and init |
+| Buildroot | Reproducible cross-built userland and root filesystem |
+| musl | C library for target userland |
+| Weston / Wayland | Initial DRM compositor and desktop shell |
+| linux-firmware | Required firmware blobs for supported devices |
 
-## 2. ما يُبنى حصراً في سديم (هويته الفعلية)
+The kernel is not written from scratch. The project customizes and builds the upstream kernel and its surrounding system.
 
-1. **تهيئة النواة لهذا الجهاز** (kernel config مخصص، تقليل حجم/ذاكرة، تفعيل ما يحتاجه العتاد فقط).
-2. **initramfs + init خفيف مخصص** (بدون systemd) وتصميم الخدمات.
-3. **بيئة سطح المكتب المخصصة** (المرحلة 5): إدارة نوافذ، شريط، قائمة تطبيقات، إشعارات، إعدادات،
-   مدير ملفات — بهوية تصميم خاصة وDark/Light وRTL/LTR.
-4. **التدويل العربي:** تخطيطات، تشكيل RTL، تبديل Alt+Shift، خطوط.
-5. **مدير حزم/تحديثات** مناسب للمعمارية (تفصيل لاحق، ADR مخصص).
-6. **نظام البناء والاختبارات وCI** والوثائق — قابل للتكرار.
-7. **ضبط الأداء لقيود العتاد:** zRAM افتراضياً، سياسات كتابة مناسبة لـ SMR، خدمات أدنى.
+## Live boot design
 
-## 3. البدائل التي رُفضت ولماذا (ملخص — التفصيل في دراسة الخيارات)
+1. BIOS boots the hybrid USB image through ISOLINUX.
+2. The kernel starts the BusyBox initramfs.
+3. Init waits for storage discovery and locates the ISO or SquashFS root filesystem using read-only mounts.
+4. The root filesystem is mounted read-only; a tmpfs upper layer provides volatile writes.
+5. switch_root enters the merged Live system.
+6. seatd and Weston start; a compositor socket is required for the GUI startup marker.
 
-- **نواة من الصفر:** يفشل عملياً في العتاد والتطبيقات المستهدفة خلال أفق المشروع.
-- **FreeBSD/NetBSD:** لا QCA9377 → يفشل أولوية العتاد الموثقة.
-- **Redox/SerenityOS:** غير جاهزين لابتوب (لا Wi-Fi، محدودية العتاد) — يُتابعان من بعيد.
-- **توزيعة جاهزة معاد تلوينها:** ممنوع بميثاق المستخدم، وليس بناء نظام فعلياً.
+No internal disk is mounted read-write. Do not add automatic disk tuning or partition operations based on guessed device names.
 
-## 4. القرارات الفرعية المعتمدة الآن
+## Test policy
 
-- **مسار الإقلاع:** GRUB2 لوضع BIOS + MBR (مطابق للجهاز فعلياً [م])؛ دعم UEFI يُضاف
-  في التكوين العام لاحقاً دون أن يكون معياراً لهذا الجهاز.
-- **بيئة الاختبار الأولى:** QEMU (x86_64) عبر GitHub Actions CI، ثم USB Live بموافقة المستخدم.
-- **خطة NVIDIA MX130:** ليست في الإصدار الأول؛ Intel HD 620 هو مسار العرض الأساسي.
-  دعم MX130 (Nouveau أو غيره) مرحلة لاحقة موثقة بمخاطره.
-- **اللغات:** عربية RTL وإنجليزية LTR من اليوم الأول في تصميم الواجهة (ليست إضافة لاحقة).
+The user explicitly chose direct ISO and USB testing instead of QEMU. Static CI and the ISO builder may verify syntax, package configuration, ISO layout, checksums and SquashFS metadata. They do not prove that the Acer display, Wi-Fi, sound, touchpad or battery works. The release is not accepted until a verified Live USB is tested on the actual device.
 
-## 5. العواقب والمخاطر المسجلة
+## Current scope boundary
 
-- **بنية «نواة معاد استخدامها»:** تتطلب بيان صدق دائم في كل إصدار ووثيقة — معتمد ومطبق.
-- **CI متأخراً:** أول إقلاع فعلي سيعتمد على تجهيز مسار CI — أنشئ `ci.yml` مبدئياً (jobs تشغيلية
-  فقط حالياً؛ job الإقلاع يُضاف في Phase 3 عند جاهزية سكربتات البناء).
-- **SMR:** مفوض لسياسات كتابة صارمة (known-issues #1).
-- **الذاكرة المحلية 268MB حرة [م]:** لا بناء ثقيل محلياً الآن؛ CI هو بيئة البناء الفعلية.
-
-## 6. كيف يُقاس نجاح هذا القرار
-
-- Phase 3: إقلاع نواة ميني مبنية من config مخصص داخل QEMU في CI (اختبار آلي بلا تدخل يدوي).
-- Phase 7: إقلاع USB Live على الجهاز الحقيقي بموافقة المستخدم — قياس العتاد فعلياً.
+The first graphical stage is Weston desktop shell. It is not a custom Windows-like desktop. The current application scripts are terminal prototypes; native graphical apps, a custom panel/launcher, browser packaging and Wine are deferred until there is a working Wayland client toolkit and test suite.

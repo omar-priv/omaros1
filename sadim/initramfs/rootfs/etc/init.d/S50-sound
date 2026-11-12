@@ -1,37 +1,21 @@
 #!/bin/sh
-# Sadim OS — خدمة الصوت Realtek HD Audio + Intel Display Audio
+# Sound status only. HDA drivers are built into the kernel configuration.
 set -u
-
-log() { echo "[sound] $*"; }
-
-start_sound() {
-  log "بدء تشغيل تعريفات الصوت…"
-
-  modprobe snd-hda-intel 2>/dev/null || log "WARN: تعذر تحميل snd-hda-intel"
-  modprobe snd-hda-codec-realtek 2>/dev/null || log "WARN: تعذر تحميل snd-hda-codec-realtek"
-  modprobe snd-hda-codec-hdmi 2>/dev/null || log "WARN: تعذر تحميل snd-hda-codec-hdmi"
-
-  if [ -d /proc/asound ]; then
-    log "تم اكتشاف بطاقة صوت: $(ls /proc/asound/card*/id 2>/dev/null | tr '\n' ' ')"
-  else
-    log "لا توجد بطاقة صوت مكتشفة — قد تتطلب إعادة تشغيل"
-  fi
-
-  if [ -x /usr/bin/amixer ]; then
-    amixer set Master 50% 2>/dev/null || true
-    amixer set PCM 70% 2>/dev/null || true
-  fi
-}
-
-stop_sound() {
-  log "إيقاف تعريفات الصوت…"
-  modprobe -r snd-hda-intel 2>/dev/null || true
-}
-
 case "$1" in
-  start) start_sound ;;
-  stop)  stop_sound ;;
-  restart) stop_sound; sleep 1; start_sound ;;
-  *) echo "Usage: $0 {start|stop|restart}"; exit 1 ;;
+  start)
+    if [ -d /proc/asound ]; then
+      found=0
+      for card in /proc/asound/card*/id; do
+        [ -r "$card" ] || continue
+        echo "[sound] detected card: $(cat "$card")"
+        found=1
+      done
+      [ "$found" -eq 1 ] || echo "[sound] no sound card detected"
+    else
+      echo "[sound] ALSA proc interface not available"
+    fi
+    ;;
+  stop|restart) echo "[sound] built-in kernel driver; no module action" ;;
+  status) cat /proc/asound/cards 2>/dev/null || echo "No ALSA cards detected" ;;
+  *) echo "Usage: $0 {start|stop|restart|status}"; exit 1 ;;
 esac
-exit 0

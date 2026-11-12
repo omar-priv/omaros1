@@ -1,46 +1,69 @@
 #!/usr/bin/env bash
-# Sadim OS — المرحلة 3: بناء الجذر الحي عبر Buildroot LTS 2025.02.19
-# المخرجات: sadim/output/rootfs.squashfs (يُقلع عبر squashfs+overlayfs من init v0.3)
-# المصدر: المرآة الرسمية github.com/buildroot/buildroot وسم 2025.02.19 مثبت البصمة
-# (buildroot.org TLS شهادتها منتهية حالياً — موثقة ENV-4 في known-issues)
+# Buildroot Live rootfs build with config validation and explicit artifact checks.
 set -euo pipefail
-
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/output"
 mkdir -p "$OUT/dl-rootfs" "$OUT/ccache" "$OUT/brconf"
 cd "$OUT"
-
 BRV="buildroot-2025.02.19"
-# بصمة التربل من المرآة الرسمية (وسم 2025.02.19 — tag object 26cf1107…)
 BR_SHA256="0fc9583d1b019b42c0cf3ea1dc64899a2247ab9adbce47f47ac5d4cb13ce0c98"
 BR_URL="https://github.com/buildroot/buildroot/archive/refs/tags/2025.02.19.tar.gz"
-
-# طبقة سديم فوق الجذر: نفس ملفات /etc المنفذة في initramfs (مصدر واحد للحقيقة)
 OVERLAY="$ROOT/initramfs/rootfs"
 test -d "$OVERLAY/etc" || { echo "FATAL: overlay layer missing: $OVERLAY"; exit 1; }
-
-# توليد defconfig سديم من القالب (تثبيت مسار الطبقة الفعلي)
 sed "s|@OVERLAY@|$OVERLAY|g" "$ROOT/rootfs/sadim-rootfs.config" > "$OUT/brconf/sadim_defconfig"
-
 if [ ! -d "$BRV" ]; then
-  echo "[sadim] downloading $BRV (official mirror tag)"
-  # -O فرض الاسم المتوقع: عنوان المرآة ينتهي بـ 2025.02.19.tar.gz فقط
+  echo "[sadim] downloading $BRV from the official Buildroot mirror"
   wget -q -O "$BRV.tar.gz" "$BR_URL"
   echo "$BR_SHA256  $BRV.tar.gz" | sha256sum -c -
   tar xf "$BRV.tar.gz"
 fi
-
 cd "$BRV"
-echo "[sadim] buildroot defconfig (sadim-rootfs.config)"
-make BR2_DEFCONFIG="$OUT/brconf/sadim_defconfig" \
-     BR2_DL_DIR="$OUT/dl-rootfs" \
-     BR2_CCACHE_DIR="$OUT/ccache" \
-     O="$OUT/buildroot-build" defconfig
+echo "[sadim] generating Buildroot configuration"
+make BR2_DEFCONFIG="$OUT/brconf/sadim_defconfig" BR2_DL_DIR="$OUT/dl-rootfs" BR2_CCACHE_DIR="$OUT/ccache" O="$OUT/buildroot-build" defconfig
 
-echo "[sadim] buildroot make (musl + busybox + kmod → squashfs)"
-make BR2_DL_DIR="$OUT/dl-rootfs" \
-     BR2_CCACHE_DIR="$OUT/ccache" \
-     O="$OUT/buildroot-build" -j"$(nproc)"
+# Kconfig may silently drop unknown symbols or options whose dependencies are
+# unmet. Fail here rather than ship an image missing requested packages.
+python3 - "$OUT/brconf/sadim_defconfig" "$OUT/buildroot-build/.config" <<'PY'
+import re
+import sys
+requested_path, effective_path = sys.argv[1:3]
+requested, effective = set(), set()
+for path, target in ((requested_path, requested), (effective_path, effective)):
+    with open(path, encoding="utf-8") as stream:
+        for line in stream:
+            match = re.match(r"^(BR2_[A-Z0-9_]+)=y$", line.strip())
+            if match:
+                target.add(match.group(1))
+missing = sorted(requested - effective)
+if missing:
+    print("ERROR: Buildroot dropped requested symbols:")
+    print("\n".join("  - " + item for item in missing))
+    sys.exit(1)
+required = {
+    "BR2_PACKAGE_WESTON",
+    "BR2_PACKAGE_WESTON_SHELL_DESKTOP",
+    "BR2_PACKAGE_EUDEV",
+    "BR2_PACKAGE_LINUX_FIRMWARE_ATHEROS_10K_QCA9377",
+    "BR2_TARGET_ROOTFS_SQUASHFS",
+}
+missing_required = sorted(required - effective)
+if missing_required:
+    print("ERROR: required runtime features are not enabled:")
+    print("\n".join("  - " + item for item in missing_required))
+    sys.exit(1)
+print("Buildroot config validated: %d requested symbols retained." % len(requested))
+PY
 
+echo "[sadim] building complete root filesystem"
+make BR2_DL_DIR="$OUT/dl-rootfs" BR2_CCACHE_DIR="$OUT/ccache" O="$OUT/buildroot-build" -j"$(nproc)"
+TARGET="$OUT/buildroot-build/target"
+test -x "$TARGET/usr/bin/weston" || { echo "ERROR: Weston binary missing"; exit 1; }
+test -s "$TARGET/lib/firmware/ath10k/QCA9377/hw1.0/firmware-5.bin" || {
+  echo "ERROR: QCA9377 firmware-5.bin missing from target rootfs"; exit 1;
+}
+test -s "$OUT/buildroot-build/images/rootfs.squashfs" || {
+  echo "ERROR: Buildroot did not produce rootfs.squashfs"; exit 1;
+}
 cp "$OUT/buildroot-build/images/rootfs.squashfs" "$OUT/rootfs.squashfs"
+unsquashfs -s "$OUT/rootfs.squashfs"
 echo "[sadim] OK: $OUT/rootfs.squashfs ($(stat -c%s "$OUT/rootfs.squashfs") bytes)"

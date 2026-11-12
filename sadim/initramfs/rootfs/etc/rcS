@@ -1,52 +1,33 @@
 #!/bin/sh
-# Sadim OS — rcS v0.5: إطار الخدمات (مراحل 3-12)
-# تهيئة قابلة للكتابة + تشغيل /etc/init.d/S* بالترتيب (S05→S99)
-# يعمل على الجذر المدمج (squashfs+overlay) — أي خطأ يُطبع ولا يُخفى
-# ⚠️ أمان: يتم التشغيل كمستخدم sadim (uid 1000)، وليس root تلقائياً
-
+# Sadim OS init services. Markers reflect the actual critical startup result.
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin
-
-mkdir -p /var/run /var/log /var/tmp /tmp
-chmod 1777 /tmp 2>/dev/null
-
+mkdir -p /var/run /var/log /var/tmp /tmp /run
+chmod 1777 /tmp 2>/dev/null || true
 export HOME=/home/sadim
 export USER=sadim
-export LANG=ar_SA.UTF-8
-export LC_ALL=ar_SA.UTF-8
+export LANG=ar_JO.UTF-8
 
-echo "[rcS] starting init.d services (Sadim OS v0.5)…"
-
+echo "[rcS] starting Sadim OS services"
 critical_failed=0
 services_started=0
-
 for s in /etc/init.d/S*; do
   [ -x "$s" ] || continue
   echo "[rcS] + $s"
   if "$s" start; then
     services_started=$((services_started + 1))
   else
-    echo "[rcS] WARN: $s failed — continuing with next service"
+    echo "[rcS] ERROR: $s failed"
     case "$s" in
-      */S05-logging|*/S10-network|*/S20-seatd|*/S30-weston|*/S99-ci-end)
+      */S05-logging|*/S10-network|*/S20-seatd|*/S30-weston)
         critical_failed=$((critical_failed + 1))
         ;;
     esac
   fi
 done
-
-echo "[rcS] services started: $services_started, critical failures: $critical_failed"
-
-if [ "$critical_failed" -gt 0 ]; then
-  echo "[rcS] WARNING: $critical_failed critical service(s) failed — system may be unstable"
+echo "[rcS] services completed: $services_started; critical failures: $critical_failed"
+if [ "$critical_failed" -eq 0 ]; then
+  echo "SADIM-ROOTFS-OK"
+else
+  echo "SADIM-ROOTFS-WARN"
 fi
-
-echo "SADIM-ROOTFS-OK"
-echo "SADIM-DRIVERS-OK"
-echo "SADIM-HW-OK"
-echo "SADIM-PERF-OK"
-echo "SADIM-SHELL-OK"
-echo "SADIM-WIN10-OK"
-echo "SADIM-ADMIN-OK"
-echo "SADIM-BRAVE-OK"
-echo "SADIM-WINE-OK"
-echo "[rcS] Sadim OS v0.2-daily ready — واجهة Windows 10-like نشطة للاستخدام اليومي"
+echo "[rcS] Base system startup finished. Hardware and app compatibility are not certified."

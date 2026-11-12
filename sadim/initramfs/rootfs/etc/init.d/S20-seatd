@@ -1,32 +1,32 @@
 #!/bin/sh
-# Sadim OS — خدمة seatd: إدارة جلسات Wayland وأجهزة الإدخال
+# Start seatd before Weston and confirm its socket is available.
 set -u
-
 DAEMON=/usr/bin/seatd
-NAME=seatd
 PIDFILE=/var/run/seatd.pid
-
-log() { echo "[seatd] $*"; }
-
+SOCKET=/run/seatd.sock
 start_seatd() {
-  [ -x "$DAEMON" ] || { echo "[seatd] binary not found: $DAEMON"; exit 0; }
-
-  echo "[seatd] starting seatd daemon…"
-  getent group seat >/dev/null || addgroup -S seat 2>/dev/null
-  getent passwd sadim >/dev/null && adduser sadim seat 2>/dev/null
+  [ -x "$DAEMON" ] || { echo "[seatd] ERROR: binary missing"; return 1; }
+  mkdir -p /run /var/run
+  [ -S "$SOCKET" ] && { echo "[seatd] socket already available"; return 0; }
+  rm -f "$PIDFILE"
   start-stop-daemon -S -b -m -p "$PIDFILE" -x "$DAEMON" -- -g seat
+  i=0
+  while [ "$i" -lt 20 ]; do
+    [ -S "$SOCKET" ] && { echo "[seatd] ready"; return 0; }
+    sleep 0.5
+    i=$((i + 1))
+  done
+  echo "[seatd] ERROR: socket did not appear"
+  return 1
 }
-
 stop_seatd() {
-  echo "[seatd] stopping seatd…"
-  start-stop-daemon -K -p "$PIDFILE"
+  start-stop-daemon -K -p "$PIDFILE" 2>/dev/null || true
   rm -f "$PIDFILE"
 }
-
 case "$1" in
   start) start_seatd ;;
-  stop)  stop_seatd ;;
+  stop) stop_seatd ;;
   restart) stop_seatd; sleep 1; start_seatd ;;
-  *) echo "Usage: $0 {start|stop|restart}"; exit 1 ;;
+  status) [ -S "$SOCKET" ] && echo "seatd ready" || { echo "seatd unavailable"; exit 1; } ;;
+  *) echo "Usage: $0 {start|stop|restart|status}"; exit 1 ;;
 esac
-exit 0
