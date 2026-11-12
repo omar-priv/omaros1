@@ -8,7 +8,10 @@ SRCROOT="$OUT/src"
 VERSION="$(sed -n 's/^KERNEL_VERSION=//p' "$ROOT/kernel/version.mk" | tr -d '[:space:]')"
 
 [ -n "$VERSION" ] || { echo "ERROR: KERNEL_VERSION missing in kernel/version.mk"; exit 1; }
-mkdir -p "$DL" "$SRCROOT"
+mkdir -p "$DL" "$SRCROOT" "$OUT"
+KERNEL_LOG="$OUT/kernel-build.log"
+: > "$KERNEL_LOG"
+exec > >(tee -a "$KERNEL_LOG") 2>&1
 cd "$DL"
 TARBALL="linux-$VERSION.tar.xz"
 
@@ -40,9 +43,9 @@ if [ ! -s "$SRC/arch/x86/boot/bzImage" ]; then
     CONFIG_DRM_I915 CONFIG_ATH10K_PCI CONFIG_R8169 CONFIG_SND_HDA_INTEL
     CONFIG_ZSMALLOC CONFIG_ZRAM CONFIG_DEVTMPFS CONFIG_DEVTMPFS_MOUNT
   )
-  for symbol in "\${required[@]}"; do
-    grep -qx "\${symbol}=y" .config || {
-      echo "ERROR: required kernel option missing after olddefconfig: \${symbol}"
+  for symbol in "${required[@]}"; do
+    grep -qx "${symbol}=y" .config || {
+      echo "ERROR: required kernel option missing after olddefconfig: ${symbol}"
       exit 1
     }
   done
