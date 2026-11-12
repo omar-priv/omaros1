@@ -67,6 +67,7 @@
 | 7 — الأداء والأمان | ✅ كود مكتمل — zRAM swap (بديل SMR)، noatime، tmpfs، مراقبة تلقائية، laptop_mode |
 | 8 — الإصدار اليومي (ISO v0.2-daily) | ✅ كود مكتمل — CI يعمل — ISO هجينة BIOS+USB 2.0 مع جميع المراحل |
 | 9 — واجهة Windows 10-like للاستخدام اليومي | ✅ كود مكتمل — CI يعمل — Taskbar + Start Menu + File Explorer + Notepad + Calculator + Task Manager + سمة Windows 10 |
+| 10 — تعريفات تلقائية + Administrator + Brave + Wine | ✅ كود مكتمل — CI يعمل — تحميل تعريفات تلقائياً + sadim uid 0 (Administrator) + متصفح Brave + دعم تطبيقات .exe عبر Wine |
 
 طريق الإنجاز الحالي: البناء والاختبارات الآلية عبر **GitHub Actions + QEMU** (المضيف ضعيف الموارد
 — 4GB RAM — ولن يُثبَّت عليه النظام ولا يُستخدم لبناء ثقيل محلياً قبل تدقيق الموارد).

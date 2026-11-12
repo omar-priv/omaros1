@@ -1,7 +1,7 @@
 # PROJECT_STATUS — حالة المشروع الحية
 
-> آخر تحديث: 2026-11-12 — commit `b731e65` (جميع المراحل 0-8 + واجهة Windows 10-like مكتملة الكود، مرفوعة على main، CI يُنفذ):
-> نواة 6.12.117 + initramfs v0.3 + Buildroot rootfs + Weston + Qt6base + Wi-Fi/صوت/طاقة/zRAM/مراقبة/SMR + ISO v0.2-daily + واجهة Windows 10-like (Taskbar + Start Menu + Core Apps).
+> آخر تحديث: 2026-11-12 — commit `be2da2d` (جميع المراحل 0-9 + التعريفات التلقائية + Administrator تلقائياً + Brave Browser + Wine لدعم .exe):
+> نواة 6.12.117 + initramfs v0.3 + Buildroot rootfs + Weston + Qt6base + Wi-Fi/صوت/طاقة/zRAM/مراقبة/SMR + ISO v0.2-daily + واجهة Windows 10-like + تعريفات محملة تلقائياً + Administrator عند الإقلاع + متصفح Brave + دعم تطبيقات .exe عبر Wine.
 
 ## المرحلة الحالية
 
@@ -13,6 +13,7 @@
 **المرحلة 7 ✅ مكتملة الكود** — الأداء والأمان: zRAM swap (بديل swap على الهارد SMR)، مراقبة تلقائية (RAM/CPU/IO/حرارة)، noatime/nodiratime، tmpfs للملفات المؤقتة، laptop_mode.
 **المرحلة 8 ✅ مكتملة الكود** — إصدار v0.2-daily: ISO هجينة BIOS+USB 2.0 مع جميع المراحل مدمجة.
 **المرحلة 9 ✅ مكتملة الكود** — واجهة Windows 10-like للمستخدم المبتدئ: Taskbar + Start Menu + File Explorer + Notepad + Calculator + Task Manager + سمة Windows 10 (#0078D7، حواف حادة، Dark Mode).
+**المرحلة 10 ✅ مكتملة الكود** — التعريفات التلقائية عند الإقلاع + Administrator تلقائياً (uid 0) + Brave Browser + Wine لدعم تطبيقات .exe.
 
 | # | المرحلة | الحالة | دليل الإتمام |
 |---|---|---|---|
@@ -26,8 +27,9 @@
 | 7 | الأداء والأمان | ✅ **كود مكتمل** | zRAM swap، SMR-optimize (noatime/writeback)، مراقبة تلقائية |
 | 8 | إصدار ISO يومي | ✅ **كود مكتمل — CI يعمل** | `v0.2-daily` ISO هجينة BIOS+USB 2.0 — بوابة `sadim-live-iso` |
 | **9** | **واجهة Windows 10-like للاستخدام اليومي** | ✅ **كود مكتمل — CI يعمل** | Taskbar + Start Menu + File Explorer + Notepad + Calculator + Task Manager |
+| **10** | **تعريفات تلقائية + Administrator + Brave + Wine** | ✅ **كود مكتمل — CI يعمل** | S35-drivers-load + sadim uid 0 + S45-brave-install + sadim-wine |
 
-## ما تم تنفيذه فعلياً حتى الآن (commit `b731e65`)
+## ما تم تنفيذه فعلياً حتى الآن (commit `be2da2d`)
 
 ### النواة (6.12.117-sadim-phase4 + v0.5 fragment):
 - PCI/SMP/ACPI/DRM+i915+fbcon/VGA/i8042/USB-HID/r8169/NET
@@ -39,16 +41,18 @@
 - مسار live rootfs (squashfs+overlayfs+switch_root)
 - طبقة /etc Live واحدة للحقيقة
 
-### خدمات init.d (المراحل 3-9):
+### خدمات init.d (المراحل 3-10):
 - S05-logging، S10-network (DHCP حقيقي)، S20-seatd، S30-weston، S99-ci-end
+- **S35-drivers-load:** تحميل جميع تعريفات العتاد تلقائياً عند الإقلاع (modprobe لكل التعريفات)
 - **S40-wifi:** Wi-Fi QCA9377 مع wpa_supplicant + firmware-5.bin
+- **S45-brave-install:** تثبيت Brave Browser تلقائياً من موقعه الرسمي
 - **S50-sound:** ALSA Realtek HD Audio + Intel Display Audio
 - **S60-power:** battery/ac/thermal، مراقبة صحة البطارية (≈60%)
 - **S70-zram:** zRAM swap 256MB — **بديل swap على الهارد SMR** (لا كتابات على الهارد)
 - **S80-monitor:** مراقبة تلقائية RAM/CPU/IO/حرارة/قرص كل 5 دقائق → /var/log/sadim-monitor.log
 - **S90-smr-optimize:** noatime/nodiratime، dirty_ratio، laptop_mode، writeback — **حل بطئ الهارد الميكانيكي**
 - **S15-windows10-shell:** تشغيل واجهة Windows 10-like (Taskbar + Start Menu)
-- **S10-sadim-tweaks:** تخصيصات Windows 10 (سمة، أداء، حماية SMR)
+- **S10-sadim-tweaks (via windows10-tweaks.sh):** تخصيصات Windows 10 + Administrator تلقائياً + تكوين Wine
 
 ### التطبيقات الأساسية الشبيهة بـ Windows 10 (مرحلة 9):
 - **sadim-file-explorer:** مستكشف ملفات شبيه بـ Windows Explorer (شجرة + قائمة ملفات، شريط أدوات، شريط حالة)
@@ -57,12 +61,28 @@
 - **sadim-task-manager:** مدير مهام شبيه بـ Windows Task Manager (عمليات، معالج، ذاكرة، حالة)
 - **sadim-taskbar:** شريط مهام شبيه بـ Windows 10 Taskbar (زر ابدأ، أيقونات مثبتة، ساعة، مؤشر لغة)
 - **sadim-start-menu:** قائمة 시작 شبيهة بـ Windows 10 Start Menu (تطبيقات أساسية، زر إيقاف التشغيل)
+- **sadim-wine:** تشغيل تطبيقات Windows (.exe) عبر Wine
+
+### متصفح الويب (مرحلة 10):
+- **Chromium:** مثبت عبر Buildroot (حزمة رسمية)
+- **Brave Browser:** يتم تثبيته تلقائياً من موقعه الرسمي عند الإقلاع الأول عبر S45-brave-install
+- الرابط: https://brave.com/
+
+### دعم تطبيقات Windows .exe (مرحلة 10):
+- **Wine:** مثبت عبر Buildroot مع Wine Gecko و Wine Mono
+- **sadim-wine:** سكريبت مساعدة لتشغيل ملفات .exe (الاستخدام: `sadim-wine <ملف.exe>`)
+- يسبق الإقلاع الأول إعداد بنية Wine (wineprefix) في /home/sadim/.wine
+
+### الصلاحيات (مرحلة 10):
+- **sadim يمتلك uid 0 و gid 0** → يعمل ك Administrator تلقائياً عند كل إقلاع
+- لا حاجة لكلمة مرور للدخول اليومي
+- autologin يسجل الدخول تلقائياً ك sadim (معادل root)
 
 ### ملفات النظام (etc):
 - etc/xdg/weston/weston.ini: سمة Windows 10 (background-color=0x0078D7، panel-height=40، no task-view/search)
-- etc/sadim/windows10-tweaks.sh: تخصيصات الأداء و SMR (مثل修改 Windows Registry)
+- etc/sadim/windows10-tweaks.sh: تخصيصات الأداء و SMR + تعيين Administrator تلقائياً + تكوين Wine
 - etc/fstab: tmpfs لـ /tmp, /var/log, /var/run, /var/tmp — **صفر كتابات عشوائية على SMR**
-- etc/inittab: مستخدم sadim يومي (ليس root تلقائياً) + getty على tty1 و ttyS0
+- etc/inittab: مستخدم sadim تلقائياً (Administrator) + getty على tty1 و ttyS0
 - etc/autologin: `/bin/login -f sadim` (تسجيل دخول تلقائي آمن)
 - os-release/issue/motd: الإصدار 0.2-daily مع واجهة Windows 10-like
 
@@ -75,9 +95,9 @@
 ### Workflows CI (جميعها على main):
 - `sadim-ci`: lint + بوابة YAML + فحص الأسرار
 - `sadim-phase2-boot`: بناء النواة + initramfs + إقلاع QEMU
-- `sadim-phase3-rootfs`: rootfs + live boot + خدمات + DHCP + HW + PERF + SHELL + WIN10 (8 علامات ×3)
-- `sadim-phase4-gui`: Weston + seatd + virtio-gpu + QMP screendump + HW + PERF + SHELL + WIN10 (9 علامات ×3)
-- `sadim-live-iso`: ISO v0.2-daily + إقلاع حقيقي SeaBIOS→isolinux→init (8 علامات ×3)
+- `sadim-phase3-rootfs`: rootfs + live boot + خدمات + DHCP + DRIVERS + HW + PERF + SHELL + WIN10 + ADMIN + WINE (11 علامة ×3)
+- `sadim-phase4-gui`: Weston + seatd + virtio-gpu + QMP screendump + HW + PERF + DRIVERS + SHELL + WIN10 + ADMIN + WINE (12 علامة ×3)
+- `sadim-live-iso`: ISO v0.2-daily + إقلاع حقيقي SeaBIOS→isolinux→init (11 علامة ×3)
 
 ## ما تم اختباره ونتائجه (سلسلة CI الحقيقية)
 
@@ -86,33 +106,36 @@
 | kernel-boot run #5 | ✅ `SADIM-BOOT-OK` ×3 | run 43080783543 |
 | live-iso run #2 | ✅ ISO 5MB + إقلاع ×3 عبر SeaBIOS→isolinux→init | run 43080783447 |
 | CI-5 بوابة بصمة BusyBox | ✅ `busybox-1.36.1.tar.bz2: OK` | runs 43085770179 + 43085770298 |
-| **commit b731e65 (جميع المراحل 0-9)** | 🔄 CI يعمل على جميع البوابات | جارٍ التشغيل على GitHub Actions |
+| **commit be2da2d (جميع المراحل 0-10)** | 🔄 CI يعمل على جميع البوابات | جارٍ التشغيل على GitHub Actions |
 
 ## حدود الصدق (مهم جداً)
 
 - نجاح CI = بناء + إقلاع في **QEMU فقط**. لم يُختبر أي شيء على العتاد الحقيقي بعد.
-- **لم يُختبر على الجهاز الحقيقي:** عرض i915، لوحة مفاتيح/لمس i8042، إيثرنت r8169، Wi-Fi QCA9377، صوت Realtek، بطارية.
+- **لم يُختبر على الجهاز الحقيقي:** عرض i915، لوحة مفاتيح/لمس i8042، إيثرنت r8169، Wi-Fi QCA9377، صوت Realtek، بطارية، Brave Browser، Wine.
+- **تطبيقات .exe عبر Wine:** تتطلب اختباراً على العتاد الحقيقي لتأكيد التوافق.
 - **لا يُسمح بمس أي قسم من أقسام Windows أو القرص الداخلي** — النظام يعمل ك-Live من USB فقط.
 - التجربة على العتاد الحقيقي require inserting الفلاشة وإقلاع الجهاز من F12 → Legacy.
 
 ## ما يحتاجه منك (المالك) لتفعيل النظام للاستخدام اليومي
 
 1. **تجربة الفلاشة على الجهاز الحقيقي** (فعل واحد فقط):
-   - نزّل إصدار `v0.2-daily` من GitHub Releases (بعد نجاح CI على commit `b731e65`)
+   - نزّل إصدار `v0.2-daily` من GitHub Releases (بعد نجاح CI على commit `be2da2d`)
    - اكتب الصورة على فلاشة USB 2.0: `dd if=sadim-0.2-daily-bios.iso of=/dev/sdX bs=4M status=progress`
    - أدرج الفلاشة في Acer E5-576G، أعد التشغيل، اضغط **F12**، اختر الفلاشة، ثم **Legacy BIOS**
-   - أبلغني بما يظهر: شاشة تسجيل الدخول؟ شريط المهام؟ اللمس؟ Wi-Fi؟ الصوت؟
+   - أبلغني بما يظهر: شاشة تسجيل الدخول؟ شريط المهام؟ اللمس؟ Wi-Fi؟ الصوت؟ Brave Browser؟ تشغيل ملف .exe؟
 
-2. **مراقبة CI**: إذا فشلت أي بوابة على commit `b731e65`, سيتم إصلاح السبب من المنبع وإعادة الدفع تلقائياً.
+2. **مراقبة CI**: إذا فشلت أي بوابة على commit `be2da2d`, سيتم إصلاح السبب من المنبع وإعادة الدفع تلقائياً.
 
 ## روابط Workflows / Releases
 
 - Workflows على main: `sadim-ci` + `sadim-phase2-boot` + `sadim-phase3-rootfs` + `sadim-phase4-gui` + `sadim-live-iso`
 - Release `v0.1.0-live`: https://github.com/omar-priv/omaros1/releases/tag/v0.1.0-live
-- إصدار `v0.2-daily` سيُنشأ تلقائياً بعد نجاح CI على commit `b731e65`.
+- إصدار `v0.2-daily` سيُنشأ تلقائياً بعد نجاح CI على commit `be2da2d`.
 
 ## آخر Commits
 
+- `be2da2d` — التعريفات التلقائية + Administrator تلقائياً + Brave Browser + Wine لدعم .exe
+- `50f32bd` — المرحلة 9: واجهة Windows 10-like للاستخدام اليومي (المبتدئ)
 - `b731e65` —docs: توثيق واجهة Windows 10-like (المرحلة 9) + جميع المراحل 0-8
 - `a56efcf` — مراحل 6+7+8: العتاد الحقيقي، zRAM/SMR، مراقبة تلقائية، ISO v0.2-daily
 - `41e64b8` — Phase 4+5: weston/seatd/eudev + Qt6base linuxfb + seatd user
