@@ -84,7 +84,47 @@ jobs:
           grep -q '^CONFIG_NETDEVICES=y$' sadim/kernel/fragments/qemu-minimal.config
           grep -q '^CONFIG_WLAN=y$' sadim/kernel/fragments/qemu-minimal.config
           grep -q '^CONFIG_SOUND=y$' sadim/kernel/fragments/qemu-minimal.config
-          grep -q '^CONFIG_VIRTIO=y$' sadim/kernel/fragments/qemu-minimal.config
+          grep -q '^CONFIG_VIRTIO_MENU=y
+          grep -q '^CONFIG_VIRTIO_PCI=y$' sadim/kernel/fragments/qemu-minimal.config
+          grep -q '^CONFIG_VIRTIO_BLK=y$' sadim/kernel/fragments/qemu-minimal.config
+          grep -q '^CONFIG_VIRTIO_NET=y$' sadim/kernel/fragments/qemu-minimal.config
+          grep -q '^CONFIG_DRM_VIRTIO_GPU=y$' sadim/kernel/fragments/qemu-minimal.config
+          grep -Fq 'SADIM-BOOT-OK SADIM-LIVE-OK SADIM-ROOTFS-OK SADIM-NET-OK SADIM-GUI-OK' sadim/ci/boot-test-iso.sh
+          ! grep -Eq 'SADIM-(HW|PERF|SHELL|WIN10|ADMIN|BRAVE|WINE)-OK' sadim/ci/boot-test-iso.sh
+          grep -q '^CONFIG_SQUASHFS=y$' sadim/kernel/fragments/qemu-minimal.config
+          grep -q '^CONFIG_ZRAM=y$' sadim/kernel/fragments/qemu-minimal.config
+          grep -q '^CONFIG_ZSMALLOC=y$' sadim/kernel/fragments/qemu-minimal.config
+          grep -q 'SADIM-LIVE-OK' sadim/initramfs/init
+          grep -Fq 'for dev in /dev/sr* /dev/sd*' sadim/initramfs/init
+          grep -q 'firmware-5.bin' sadim/initramfs/build.sh
+          grep -q 'S70seatd' sadim/initramfs/rootfs/etc/init.d/S20-seatd
+          grep -q 'S75-weston' sadim/initramfs/rootfs/etc/rcS
+          grep -q 'S25-network' sadim/initramfs/rootfs/etc/rcS
+          grep -q 'S10udev' sadim/rootfs/build.sh
+          grep -q 'S25-network' sadim/rootfs/build.sh
+          grep -Fq 'label=${item%%:*}' sadim/initramfs/rootfs/etc/init.d/S35-drivers-load
+          grep -Fq 'path=${item#*:}' sadim/initramfs/rootfs/etc/init.d/S35-drivers-load
+          grep -Fq 'INTERVAL="${SADIM_MONITOR_INTERVAL:-300}"' sadim/initramfs/rootfs/etc/init.d/S80-monitor
+
+      - name: Verify key project documentation exists
+        run: |
+          test -f docs/adr/ADR-001-architecture.md
+          test -f docs/research/hardware-discovery.md
+          test -f docs/research/architecture-options.md
+          test -f docs/roadmap.md
+          test -f docs/known-issues.md
+          test -f docs/testing-strategy.md
+          test -f docs/usb-try-guide.md
+
+      - name: No committed secrets
+        run: |
+          if grep -riEn "(api[_-]?key|secret|password|token)[[:space:]]*[:=][[:space:]]*['\"][A-Za-z0-9]{16,}" \
+             --include='*.md' --include='*.yml' --include='*.sh' --include='*.py' . ; then
+            echo "::error::Potential secret found in tracked files"
+            exit 1
+          fi
+          echo "No secret-like assignments found."
+ sadim/kernel/fragments/qemu-minimal.config
           grep -q '^CONFIG_VIRTIO_PCI=y$' sadim/kernel/fragments/qemu-minimal.config
           grep -q '^CONFIG_VIRTIO_BLK=y$' sadim/kernel/fragments/qemu-minimal.config
           grep -q '^CONFIG_VIRTIO_NET=y$' sadim/kernel/fragments/qemu-minimal.config
