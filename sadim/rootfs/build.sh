@@ -79,9 +79,23 @@ grep -Eq '^video:[^:]*:28:.*sadim' "$TARGET/etc/group" || {
   echo "ERROR: video group (GID 28) or Sadim membership missing"; exit 1;
 }
 test -x "$TARGET/bin/busybox" || { echo "ERROR: Buildroot BusyBox binary missing"; exit 1; }
+
+# BusyBox is cross-compiled for the target musl rootfs and cannot be executed
+# directly on the Ubuntu/glibc build host. Validate its config and installed
+# target applet links without trying to run the target binary on the host.
+BUSYBOX_CONFIG="$(find "$OUT/buildroot-build/build" -mindepth 2 -maxdepth 2 -type f -path '*/busybox-*/.config' -print -quit)"
+test -s "$BUSYBOX_CONFIG" || {
+  echo "ERROR: BusyBox build configuration missing"
+  exit 1
+}
 for applet in mkswap swapon swapoff; do
-  "$TARGET/bin/busybox" --list | grep -qx "$applet" || {
-    echo "ERROR: Buildroot BusyBox applet missing: $applet"
+  symbol="$(printf '%s' "$applet" | tr '[:lower:]' '[:upper:]')"
+  grep -qx "CONFIG_${symbol}=y" "$BUSYBOX_CONFIG" || {
+    echo "ERROR: BusyBox configuration does not enable applet: $applet"
+    exit 1
+  }
+  test -x "$TARGET/sbin/$applet" || {
+    echo "ERROR: BusyBox applet link missing or not executable: $TARGET/sbin/$applet"
     exit 1
   }
 done
